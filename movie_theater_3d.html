@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>映画館3D</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:sans-serif;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+input{user-select:text;-webkit-user-select:text}button{touch-action:manipulation}
+canvas{display:block}
+#yt,.ytf{pointer-events:none;will-change:transform;position:fixed;left:0;top:0;width:1280px;height:720px;border:0;transform-origin:0 0;display:none;background:#000}
+#ui{position:fixed;left:8px;top:calc(env(safe-area-inset-top,0px) + 8px);right:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;z-index:5}
+#ui>*{background:rgba(20,20,30,.8);color:#fff;border:1px solid #556;border-radius:8px;padding:8px 10px;font-size:14px}
+#ui input[type=text]{width:200px}
+#ui button{cursor:pointer}
+#stick{position:fixed;left:calc(env(safe-area-inset-left,0px) + 24px);bottom:calc(env(safe-area-inset-bottom,0px) + 24px);width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.35);z-index:5;touch-action:none}
+#knob{position:absolute;left:35px;top:35px;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.45);pointer-events:none}
+#room{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(320px,92vw);max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;background:rgba(20,20,30,.94);color:#fff;border:1px solid #556;border-radius:12px;padding:12px;z-index:6;font-size:14px}
+#room[hidden]{display:none}
+#room input,#room button{background:#222a3a;color:#fff;border:1px solid #667;border-radius:8px;padding:8px 10px;font-size:14px}
+#room .row{display:flex;gap:6px}#room .row input{flex:1;min-width:0}
+#rlist{display:flex;flex-direction:column;gap:6px;max-height:170px;overflow:auto}#rlist button{text-align:left}#rlist .none{color:#aaa;font-size:13px}
+#rst{color:#9fd;font-size:13px}#room small{color:#aaa}
+#standBtn{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:rgba(20,20,30,.85);color:#fff;border:1px solid #889;border-radius:24px;padding:12px 22px;font-size:16px;z-index:5;touch-action:manipulation}#standBtn[hidden]{display:none}
+#ctl{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(340px,92vw);max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;background:rgba(20,20,30,.94);color:#fff;border:1px solid #556;border-radius:12px;padding:12px;z-index:6;font-size:14px}
+#ctl[hidden]{display:none}
+#ctl input[type=text],#ctl button{background:#222a3a;color:#fff;border:1px solid #667;border-radius:8px;padding:8px 10px;font-size:14px}
+#ctl input[type=text],#room input,#ui input[type=text]{font-size:16px}
+#ctl .row{display:flex;gap:6px}#ctl .row input{flex:1;min-width:0}#ctl small{color:#aaa}
+input,select,textarea{font-size:16px!important;-webkit-touch-callout:default!important;-webkit-user-select:text!important;user-select:text!important}
+#shop{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(340px,92vw);max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;background:rgba(20,20,30,.94);color:#fff;border:1px solid #556;border-radius:12px;padding:12px;z-index:6;font-size:14px}
+#shop[hidden]{display:none}
+#shop input[type=text],#shop button{background:#222a3a;color:#fff;border:1px solid #667;border-radius:8px;padding:8px 10px;font-size:14px}
+#shop input[type=text],#room input,#ui input[type=text]{font-size:16px}
+#shop .row{display:flex;gap:6px}#shop .row input{flex:1;min-width:0}#shop small{color:#aaa}
+#hold{position:fixed;right:calc(env(safe-area-inset-right,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 24px);display:flex;flex-direction:column;gap:8px;z-index:5}#hold button{background:rgba(20,20,30,.85);color:#fff;border:1px solid #889;border-radius:24px;padding:12px 18px;font-size:16px;touch-action:manipulation}#hold button[hidden]{display:none}
+#shop button:disabled{opacity:.4}
+</style></head><body>
+<div id="ui">
+<button id="bRoom">🚪 部屋</button>
+<button id="bSeat">💺 席に座る/立つ</button>
+</div>
+<div id="room" hidden>
+<b>🚪 みんなで映画館</b>
+<input type="text" id="rname" maxlength="8" placeholder="名前">
+<div class="row" id="rmk"><input type="text" id="rroom" maxlength="12" placeholder="部屋の名前(任意)"><button id="rMake">部屋を作る</button></div>
+<b style="font-size:13px">🔍 部屋を探す(タップで入室・別の部屋にも移れます)</b>
+<div id="rlist"><div class="none">探しています…</div></div>
+<div class="row" id="rjoin"><input type="text" id="rcode" inputmode="numeric" maxlength="4" placeholder="コードで入る(4桁)"><button id="rGo">入る</button></div>
+<button id="rLeave" hidden>退出</button>
+<div id="rst">未接続(一人でも遊べます)</div>
+<small>部屋を作ると一覧に出て、誰でも自由に出入りできます。写真・YouTube・デモは全員で共有されます。動画ファイルは選んだ人からライブ配信されます。</small>
+</div>
+<div id="ctl" hidden>
+<div class="row" style="align-items:center"><b style="flex:1">🎛 オペレーション</b><button id="ctlX">✕</button></div>
+<div id="ytSlot" style="display:none;flex:none;position:relative;width:100%;height:0;padding-bottom:56.25%;background:#000;border-radius:8px"></div>
+<div id="ytCtl" style="display:none;flex-direction:column;gap:6px">
+<div class="row"><button id="yBack" style="flex:1">⏪ 10秒</button><button id="yPlay" style="flex:1">⏯</button><button id="yFwd" style="flex:1">10秒 ⏩</button></div>
+<div class="row" style="align-items:center"><span id="yTime" style="font-size:12px;min-width:90px">0:00 / 0:00</span><input type="range" id="ySeek" min="0" max="1000" value="0"></div>
+<div class="row" style="align-items:center"><span>🔊</span><input type="range" id="yVol" min="0" max="100" value="100"><button id="yMute">ミュート</button></div>
+<small>広告が出たら、上の動画の「スキップ」をタップしてください(広告はYouTube側の仕様で自動スキップできません)。操作中は動画がこのパネルに表示されます。</small>
+</div>
+<button id="bFile">📁 写真・動画を選ぶ</button>
+<input type="file" id="file" accept="image/*,video/*" hidden>
+<div class="row"><input type="text" id="url" maxlength="2000" inputmode="none" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="YouTubeのURLを貼る"><button id="bPaste">📋 貼って再生</button><button id="bYt">▶ 再生</button></div>
+<div class="row"><button id="bDemo" style="flex:1">🎞 デモ</button><button id="bPlay" style="flex:1">⏯ 再生/停止</button><button id="bSnd" style="flex:1">🔊 音</button></div>
+<button id="bLight">💡 照明</button>
+<div id="kSec" style="display:none;flex-direction:column;gap:6px;border-top:1px solid #556;padding-top:8px">
+<b>🎤 カラオケ</b>
+<button id="bMic">🎤 マイク OFF</button>
+<label>マイク音量<input type="range" id="mVol" min="0" max="150" value="100" style="width:100%"></label>
+<label>エコー<input type="range" id="mEcho" min="0" max="80" value="30" style="width:100%"></label>
+<div style="height:8px;background:#223;border-radius:4px;overflow:hidden"><div id="mLv" style="height:100%;width:0;background:#3f8"></div></div>
+<small>曲は上のYouTube欄にURLを貼って再生。イヤホン推奨(スピーカーだとハウリングします)。マイクはカラオケルームの中だけで有効です。</small>
+</div>
+<small>映像は部屋にいる全員に共有されます(動画ファイルは選んだ人からのライブ配信)。</small>
+</div>
+<div id="shop" hidden>
+<div class="row" style="align-items:center"><b style="flex:1">🍿 売店</b><button id="shopX">✕</button></div>
+<div id="wallet" style="color:#ffd24d"></div>
+<div class="row" id="szRow"></div>
+<b style="font-size:13px">🍿 ポップコーン</b><div id="popList" style="display:flex;flex-direction:column;gap:6px"></div>
+<b style="font-size:13px">🥤 ドリンク</b><div id="drkList" style="display:flex;flex-direction:column;gap:6px"></div>
+<button id="bAllow">💴 おこづかい +¥1000</button>
+<small>買ったものは手に持てます。「食べる」「飲む」ボタンで楽しめます(自分の画面だけに表示されます)。</small>
+</div>
+<div id="hold"><button id="bEat" hidden>🍿 食べる</button><button id="bDrink" hidden>🥤 飲む</button><button id="bDrop" hidden>🗑 捨てる</button></div>
+<button id="standBtn" hidden>🚶 席を立つ</button>
+<div id="stick"><div id="knob"></div></div>
+<iframe id="yt" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const W=()=>innerWidth,H=()=>innerHeight;
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(W(),H());renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x05050a);
+scene.fog=new THREE.Fog(0x05050a,10,45);
+const cam=new THREE.PerspectiveCamera(70,W()/H(),.1,100);
+cam.position.set(0,1.7,15.5);cam.rotation.order='YXZ';scene.add(cam);
+// 一人称の腕(indexA16.htmlのプレイヤーの見た目: 紺の袖+肌色の手)
+const skin=new THREE.MeshLambertMaterial({color:0xf0c9a0}),sleeve=new THREE.MeshLambertMaterial({color:0x2a3f6b});
+const arms=[-1,1].map(s=>{const p=new THREE.Group();p.position.set(s*.32,-.3,-.45);
+ const a=new THREE.Mesh(new THREE.BoxGeometry(.11,.11,.42),sleeve);a.position.z=-.1;p.add(a);
+ const f=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,.12),skin);f.position.z=-.34;p.add(f);
+ p.rotation.y=-s*.12;cam.add(p);return p});
+let walk=0,swing=0;
+
+const TG=new THREE.Group();scene.add(TG);const OX2=-36; // シアター2は廊下の右手(-x方向)36m先
+// ---- room ----
+const M=(c,r=.9)=>new THREE.MeshStandardMaterial({color:c,roughness:r});
+const box=(w,h,d,m,x,y,z)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;TG.add(o);return o};
+const RW=24,RD=36,RH=12;
+box(RW,.2,RD,M(0x2a1218),0,-.1,0);          // floor
+box(RW,.2,RD,M(0x111118),0,RH,0);           // ceiling
+box(.2,RH,RD,M(0x1c1020),-RW/2,RH/2,0);     // walls
+box(.2,RH,RD,M(0x1c1020),RW/2,RH/2,0);
+box(RW,RH,.2,M(0x0a0a0e),0,RH/2,-RD/2);     // front
+box(RW/2-1.2,RH,.2,M(0x1c1020),-(RW/4+.6),RH/2,RD/2);box(RW/2-1.2,RH,.2,M(0x1c1020),RW/4+.6,RH/2,RD/2);
+box(2.4,RH-2.8,.2,M(0x1c1020),0,2.8+(RH-2.8)/2,RD/2);
+for(const sd of[-1,1]){box(.15,2.8,.35,M(0x3a2a18),sd*1.28,1.4,RD/2);box(.06,2.7,1.1,M(0x5a3a22),sd*1.2,1.35,RD/2+.55)}
+box(2.7,.15,.35,M(0x3a2a18),0,2.85,RD/2);      // back
+// stage + frame
+box(RW-2,.5,3,M(0x111111),0,.25,-RD/2+2);
+const SY=6.5,SZ=-RD/2+.7,SWD=16,SHT=9;
+box(SWD+.8,SHT+.8,.2,M(0x050505),0,SY,SZ-.15);
+// curtains
+for(const s of[-1,1])box(2,RH-1,.6,M(0x7a0c18),s*(SWD/2+2),RH/2,SZ+.3);
+const SEATS=[],SEATLIST=[];
+function mergeParts(parts){
+  const P=[],N=[],C=[],I=[];let off=0;
+  for(const[w,h,d,x,y,z,col,rx=0]of parts){
+    const g=new THREE.BoxGeometry(w,h,d);g.applyMatrix4(new THREE.Matrix4().makeRotationX(rx).setPosition(x,y,z));
+    const c=new THREE.Color(col),pa=g.attributes.position,na=g.attributes.normal;
+    for(let i=0;i<pa.count;i++){P.push(pa.getX(i),pa.getY(i),pa.getZ(i));N.push(na.getX(i),na.getY(i),na.getZ(i));C.push(c.r,c.g,c.b)}
+    for(const k of g.index.array)I.push(k+off);off+=pa.count;
+  }
+  const G=new THREE.BufferGeometry();
+  G.setAttribute('position',new THREE.Float32BufferAttribute(P,3));G.setAttribute('normal',new THREE.Float32BufferAttribute(N,3));G.setAttribute('color',new THREE.Float32BufferAttribute(C,3));G.setIndex(I);return G;
+}
+// 映画館の座席: 脚・フレーム・クッション・背もたれ・ヘッドレスト・肘掛け・カップホルダー
+const SEATGEO=(()=>{const R=0xaa1122,R2=0xc41e34,D=0x222226,pt=[
+ [.62,.05,.3,0,.03,.12,0x1a1a1a],[.08,.42,.08,-.27,.23,.14,D],[.08,.42,.08,.27,.23,.14,D],
+ [.6,.06,.5,0,.4,.04,0x2a2a2e],
+ [.62,.14,.54,0,.5,-.02,R],[.62,.09,.1,0,.54,-.3,0xb8182c],[.56,.05,.46,0,.6,-.02,R2],
+ [.64,.62,.14,0,.95,.36,R,-.12],[.55,.5,.06,0,.95,.28,R2,-.12],[.5,.22,.12,0,1.36,.4,R,-.18],[.5,.03,.04,0,1.2,.27,0xc9a227,-.12]];
+ for(const sx of[-1,1])pt.push([.08,.07,.52,sx*.36,.76,.1,D],[.06,.3,.1,sx*.36,.58,.3,D],[.1,.03,.1,sx*.36,.8,-.1,0x777777]);
+ return mergeParts(pt)})();
+// seats on risers
+for(let r=0;r<6;r++){
+  const z=-2+r*3,y=r*.45;
+  for(let i=-8;i<=8;i++){
+    if(Math.abs(i)<1)continue;
+    const x=i*1.15;SEATS.push([x,z,r]);
+    SEATLIST.push([x,y+.05,z]);
+  }
+}
+{const im=new THREE.InstancedMesh(SEATGEO,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.65,metalness:.05}),SEATLIST.length),m4=new THREE.Matrix4();
+ SEATLIST.forEach((q,i)=>im.setMatrixAt(i,m4.makeTranslation(q[0],q[1],q[2])));
+ im.frustumCulled=false;im.castShadow=im.receiveShadow=true;TG.add(im)}
+{const n=SEATS.length;for(let i=0;i<n;i++)SEATS.push([SEATS[i][0]+OX2,SEATS[i][1],SEATS[i][2]])}
+// ---- 床の高さ・当たり判定 ----
+const EYE=1.7,rowZ=r=>-2+r*3,rowY=r=>r*.45;
+const sm=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
+// 客席の床: 平らな座席の段 ↔ なだらかなスロープ(座席の前後0.8mは平ら)
+function rampH(z){
+  if(z<-3.2)return 0;
+  if(z<=rowZ(0)+.8)return .05*sm((z+3.2)/.4);
+  for(let r=0;r<5;r++){
+    const a=rowZ(r)+.8,b=rowZ(r+1)-.8;
+    if(z<=b)return rowY(r)+.05+.45*sm((z-a)/(b-a));
+  }
+  const top=rowY(5)+.05,a=rowZ(5)+.8;
+  if(z<=a)return top;
+  return top*(1-sm((z-a)/1.4));
+}
+function floorLocal(x,z){
+  let h=0;
+  const dz=z-(-RD/2+2);                                            // ステージ(前端はなだらかに)
+  if(Math.abs(x)<RW/2-1)h=.5*sm((1.8-dz)/.7)*sm((dz+1.8)/.7+1);
+  h=Math.max(h,rampH(z)*sm((10.8-Math.abs(x))/.6));
+  return h;
+}
+// 見た目の床もスロープに(横から見た断面を押し出し)
+{const sh=new THREE.Shape();sh.moveTo(-3.2,0);
+ for(let z=-3.2;z<=15.4;z+=.1)sh.lineTo(z,rampH(z));
+ sh.lineTo(15.4,0);sh.lineTo(-3.2,0);
+ const g=new THREE.ExtrudeGeometry(sh,{depth:21,bevelEnabled:false});
+ const m=new THREE.Mesh(g,M(0x1a1a22));m.rotation.y=-Math.PI/2;m.position.x=10.5;m.receiveShadow=true;TG.add(m);}
+function floorAt(x,z){const ox=x<-18?OX2:0;if(Math.abs(x-ox)>RW/2||Math.abs(z)>RD/2)return 0;return floorLocal(x-ox,z)}
+const ZONES=[[-11.5,11.5,-16.5,17.5],[OX2-11.5,OX2+11.5,-16.5,17.5],[-1,1,17.4,18.6],[OX2-1,OX2+1,17.4,18.6],[-49.5,15.5,18,24.5]];
+const inside=(x,z)=>ZONES.some(([a,b,c,d])=>x>=a&&x<=b&&z>=c&&z<=d);
+const lastOK={x:0,z:15.5};
+function collide(p){
+  if(!inside(p.x,p.z)){if(inside(p.x,lastOK.z))p.z=lastOK.z;else if(inside(lastOK.x,p.z))p.x=lastOK.x;else{p.x=lastOK.x;p.z=lastOK.z}}
+  const R=.3;
+  for(const[x0,x1,z0,z1]of OBS){const cx=Math.max(x0,Math.min(x1,p.x)),cz=Math.max(z0,Math.min(z1,p.z)),dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);if(d<R&&d>1e-4){p.x+=dx/d*(R-d);p.z+=dz/d*(R-d)}}
+  for(const[sx,sz]of SEATS){
+    const cx=Math.max(sx-.45,Math.min(sx+.45,p.x)),cz=Math.max(sz-.4,Math.min(sz+.55,p.z));
+    const dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);
+    if(d<R){
+      if(d>1e-4){p.x+=dx/d*(R-d);p.z+=dz/d*(R-d)}
+      else p.z=sz-.4-R; // 座席の中に入った場合は手前へ押し出す
+    }
+  }
+}
+// lights
+const LIGHTS=[],amb=new THREE.AmbientLight(0x404060,1.0);amb.userData.b=1.0;scene.add(amb);LIGHTS.push(amb);
+const sl=new THREE.PointLight(0xaabbff,1.2,40);sl.position.set(0,SY,SZ+4);TG.add(sl);sl.userData.b=1.2;LIGHTS.push(sl);
+for(let i=0;i<8;i++){const l=new THREE.Mesh(new THREE.SphereGeometry(.1),new THREE.MeshBasicMaterial({color:0xffcc66}));
+  const s=i%2?1:-1;l.position.set(s*(RW/2-.4),1.5,-14+Math.floor(i/2)*9);TG.add(l);
+}
+// projector beam glow
+const beam=new THREE.Mesh(new THREE.ConeGeometry(5,24,24,1,true),new THREE.MeshBasicMaterial({color:0x99aaff,transparent:true,opacity:.04,side:THREE.DoubleSide,depthWrite:false}));
+beam.position.set(0,SY,SZ+12);beam.rotation.x=-Math.PI/2;beam.position.set(0,RH-1.5,SZ+12);
+beam.lookAt(0,SY,SZ);beam.rotateX(Math.PI/2);TG.add(beam);
+
+// ---- デコレーション & 照明 ----
+let LV=1,LVT=1;
+const glowTex=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,220,150,1)');g.addColorStop(1,'rgba(255,200,100,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return new THREE.CanvasTexture(c)})();
+const DIM=[],HALOS=[],BULBS=[],OBS=[],MARK=[];
+const emis=c=>new THREE.MeshBasicMaterial({color:c});
+const dimBox=(w,h,d,col,x,y,z)=>{const m=emis(col),o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);TG.add(o);DIM.push([m,new THREE.Color(col)]);return o};
+const halo=(x,y,z,sc,op)=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false}));sp.position.set(x,y,z);sp.scale.set(sc,sc,1);TG.add(sp);HALOS.push([sp,op])};
+const txtTex=(w,h,fn)=>{const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'));return new THREE.CanvasTexture(c)};
+// 天井ダウンライト
+for(let i=-1;i<=1;i++)for(let j=0;j<6;j++){const x=i*6,z=-12+j*5.5;dimBox(.6,.05,.6,0xfff0c8,x,RH-.03,z);halo(x,RH-.5,z,2.6,.3)}
+// 壁のブラケットライト
+for(const sd of[-1,1])for(const z of[-12,-4.5,3,10.5]){dimBox(.15,.5,.3,0xffc870,sd*(RW/2-.2),4,z);halo(sd*(RW/2-.7),4,z,3.2,.5)}
+// 映画ポスター(オリジナル)
+const PS=[['星の海','SF大冒険','#1d2b6b','#6b2f9a'],['夏の約束','青春ドラマ','#d9692b','#7a2850'],['月夜の探偵','ミステリー','#14301f','#2f6b5a'],['笑う森','アニメ','#2b7a4b','#c9b13a'],
+ ['海賊島','アドベンチャー','#0f4c75','#bbe1fa'],['雪の約束','ロマンス','#4a5a8a','#e0b8d8'],['鉄の街','アクション','#2a2a2a','#a33a1a'],['宇宙食堂','コメディ','#6a1b9a','#ffb300']];
+let pi=0;
+for(const sd of[-1,1])for(const z of[-10,-4,4,10]){
+  const P=PS[pi++%8],tex=txtTex(256,384,x=>{const g=x.createLinearGradient(0,0,0,384);g.addColorStop(0,P[2]);g.addColorStop(1,P[3]);x.fillStyle=g;x.fillRect(0,0,256,384);
+    x.textAlign='center';x.fillStyle='#fff';x.font='bold 46px sans-serif';x.fillText(P[0],128,180);x.font='24px sans-serif';x.fillText(P[1],128,225);
+    x.fillStyle='#ffd24d';x.font='bold 22px sans-serif';x.fillText('NOW SHOWING',128,350);x.strokeStyle='#ffd24d';x.lineWidth=6;x.strokeRect(6,6,244,372)});
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.6),new THREE.MeshBasicMaterial({map:tex}));
+  pl.position.set(sd*(RW/2-.12),6.2,z);pl.rotation.y=-sd*Math.PI/2;TG.add(pl);
+  const fr=new THREE.Mesh(new THREE.BoxGeometry(.06,3.8,2.6),M(0x3a2a10));fr.position.set(sd*(RW/2-.08),6.2,z);TG.add(fr);
+}
+// スクリーン枠の電球(チェイス点滅)
+{const hw=SWD/2+.55,hh=SHT/2+.55,pts=[];
+ for(let i=0;i<=20;i++){const x=-hw+i*hw*2/20;pts.push([x,SY+hh],[x,SY-hh])}
+ for(let i=1;i<10;i++){const y=SY-hh+i*hh*2/10;pts.push([-hw,y],[hw,y])}
+ pts.forEach(([x,y])=>{const m=emis(0xffe08a),o=new THREE.Mesh(new THREE.SphereGeometry(.09,8,6),m);o.position.set(x,y,SZ-.08);TG.add(o);BULBS.push(m)})}
+// 天井ぎわのネオン
+const neonMat=emis(0xff40a0);
+for(const sd of[-1,1]){const o=new THREE.Mesh(new THREE.BoxGeometry(.08,.08,RD-3),neonMat);o.position.set(sd*(RW/2-.1),RH-.9,0);TG.add(o)}
+{const o=new THREE.Mesh(new THREE.BoxGeometry(RW-3,.08,.08),neonMat);o.position.set(0,RH-.9,-RD/2+.2);TG.add(o)}
+// 足元灯(通路・段の手前)
+for(let r=0;r<6;r++)for(const x of[-.8,.8,-10.4,10.4]){const z=rowZ(r)-.95,o=new THREE.Mesh(new THREE.BoxGeometry(.12,.04,.5),emis(0xff9a3c));o.position.set(x,rampH(z)+.04,z);TG.add(o)}
+// 赤いカーペット
+{const cp=new THREE.Mesh(new THREE.PlaneGeometry(RW-4,10),M(0x5a0a14,1));cp.rotation.x=-Math.PI/2;cp.position.set(0,.012,-9.2);cp.receiveShadow=true;TG.add(cp);
+ for(const sd of[-1,1]){const st=new THREE.Mesh(new THREE.PlaneGeometry(.2,10),emis(0xc9a227));st.rotation.x=-Math.PI/2;st.position.set(sd*(RW/2-2.3),.014,-9.2);TG.add(st)}}
+// 非常口
+for(const sd of[-1,1]){
+  box(1.6,2.6,.1,M(0x2a1a12),sd*9,1.3,RD/2-.15);
+  const t=txtTex(128,48,x=>{x.fillStyle='#0a7a3a';x.fillRect(0,0,128,48);x.fillStyle='#fff';x.font='bold 30px sans-serif';x.textAlign='center';x.fillText('EXIT',64,36)});
+  const sg=new THREE.Mesh(new THREE.PlaneGeometry(1.2,.45),new THREE.MeshBasicMaterial({map:t}));sg.position.set(sd*9,3.1,RD/2-.2);sg.rotation.y=Math.PI;TG.add(sg);
+}
+{const t=txtTex(256,64,x=>{x.fillStyle='#0a7a3a';x.fillRect(0,0,256,64);x.fillStyle='#fff';x.font='bold 36px sans-serif';x.textAlign='center';x.fillText('出口 EXIT',128,46)});
+ const sg=new THREE.Mesh(new THREE.PlaneGeometry(1.6,.4),new THREE.MeshBasicMaterial({map:t}));sg.position.set(0,3.4,RD/2-.12);sg.rotation.y=Math.PI;TG.add(sg)}
+// ポップコーン売り場(左奥)
+box(4.2,1.1,1.2,M(0x7a4a24),-8,.55,16.4);
+box(1,1.5,1,M(0xb01020),-9.4,1.85,16.4);
+{const gm=new THREE.Mesh(new THREE.BoxGeometry(.9,.9,.9),new THREE.MeshBasicMaterial({color:0xffd24d,transparent:true,opacity:.75}));gm.position.set(-9.4,2.9,16.4);TG.add(gm)}
+{const t=txtTex(256,80,x=>{x.fillStyle='#b01020';x.fillRect(0,0,256,80);x.fillStyle='#ffe58a';x.font='bold 40px sans-serif';x.textAlign='center';x.fillText('POPCORN',128,56)});
+ const sg=new THREE.Mesh(new THREE.PlaneGeometry(3,.95),new THREE.MeshBasicMaterial({map:t}));sg.position.set(-8,3.9,17.2);sg.rotation.y=Math.PI;TG.add(sg);halo(-8,3.9,16.9,4,.35)}
+OBS.push([-10.2,-5.8,15.7,17.1],[-1.35,-1.05,18,19.15],[1.05,1.35,18,19.15]);
+// 座席の「座る」マーク(近づくと表示)
+const markMat=new THREE.SpriteMaterial({map:txtTex(128,128,x=>{x.fillStyle='rgba(30,170,100,.95)';x.beginPath();x.arc(64,64,58,0,7);x.fill();x.lineWidth=6;x.strokeStyle='#fff';x.stroke();x.fillStyle='#fff';x.font='bold 44px sans-serif';x.textAlign='center';x.fillText('座る',64,80)})});
+SEATS.forEach(([x,z,r],i)=>{const sp=new THREE.Sprite(markMat);sp.scale.set(.6,.6,1);sp.position.set(x,rowY(r)+1.75,z);sp.userData.i=i;sp.visible=false;scene.add(sp);MARK.push(sp)});
+// ---- オペレーション機械(一番前・左側) ----
+const OPX=-8.5,OPZ=-12.3,LEDS=[];
+box(2.4,1,1.1,M(0x2a2e3a,.5),OPX,.5,OPZ);
+box(2.5,.12,1.2,M(0x14161e),OPX,1.06,OPZ);
+{const t=txtTex(512,208,x=>{x.fillStyle='#0b1220';x.fillRect(0,0,512,208);x.strokeStyle='#4aa3ff';x.lineWidth=6;x.strokeRect(4,4,504,200);
+  x.fillStyle='#7cc4ff';x.font='bold 44px sans-serif';x.textAlign='center';x.fillText('OPERATION',256,62);
+  [['映像',70],['設定',256],['停止',442]].forEach(([l,cx])=>{x.fillStyle='#16304f';x.fillRect(cx-60,95,120,70);x.strokeStyle='#4aa3ff';x.lineWidth=3;x.strokeRect(cx-60,95,120,70);x.fillStyle='#fff';x.font='bold 30px sans-serif';x.fillText(l,cx,141)})});
+  const pn=new THREE.Mesh(new THREE.PlaneGeometry(2.2,.9),new THREE.MeshBasicMaterial({map:t}));
+  pn.rotation.x=-1.0;pn.position.set(OPX,1.38,OPZ+.1);TG.add(pn);halo(OPX,1.7,OPZ+.4,2.6,.3)}
+for(let i=0;i<6;i++){const m=emis(0x33ff88),o=new THREE.Mesh(new THREE.BoxGeometry(.1,.05,.1),m);o.position.set(OPX-1+i*.4,1.15,OPZ+.55);TG.add(o);LEDS.push(m)}
+for(const dx of[-.9,.9]){const kn=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.08,12),M(0xcccccc,.3));kn.position.set(OPX+dx,1.13,OPZ-.35);TG.add(kn)}
+OBS.push([OPX-1.35,OPX+1.35,OPZ-.7,OPZ+.7]);
+const opMark=new THREE.Sprite(new THREE.SpriteMaterial({map:txtTex(128,128,x=>{x.fillStyle='rgba(40,120,230,.95)';x.beginPath();x.arc(64,64,58,0,7);x.fill();x.lineWidth=6;x.strokeStyle='#fff';x.stroke();x.fillStyle='#fff';x.font='bold 44px sans-serif';x.textAlign='center';x.fillText('操作',64,80)})}));
+opMark.scale.set(.8,.8,1);opMark.position.set(OPX,2.3,OPZ);opMark.visible=false;scene.add(opMark);
+const ctl=document.getElementById('ctl');
+document.getElementById('ctlX').onclick=()=>ctl.hidden=true;
+function decorTick(t,dt){
+  doorTick(dt);hallTick(t,dt);karaokeTick(t);
+  { let dm=99;for(const[o,x,z]of OPS){const d=Math.hypot(cam.position.x-x,cam.position.z-(z===undefined?OPZ:z));dm=Math.min(dm,d);o.visible=d<4.5&&ctl.hidden}
+    if(!ctl.hidden&&dm>6.5)ctl.hidden=true;
+    LEDS.forEach((m,i)=>m.color.setHex(((i+Math.floor(t*4))%6<2)?0x33ff88:0x0c4a2a)) }
+  LV+=(LVT-LV)*Math.min(1,dt*3);
+  const k=.25+.75*LV;
+  LIGHTS.forEach(l=>l.intensity=l.userData.b*k);
+  DIM.forEach(([m,c])=>m.color.copy(c).multiplyScalar(k));
+  HALOS.forEach(([sp,op])=>sp.material.opacity=op*(.2+.8*LV));
+  const f=Math.floor(t*6);BULBS.forEach((m,i)=>m.color.setHex((i+f)%3===0?0xffe08a:0x4a3a1a));
+  neonMat.color.setHSL((t*.05)%1,.9,.55);
+  for(const sp of MARK){
+    const[x,z]=SEATS[sp.userData.i];let v=!seated&&Math.hypot(cam.position.x-x,cam.position.z-z)<4;
+    if(v)for(const id in AV){const a=AV[id];if(a.s&&Math.hypot(a.tx-x,a.tz-z)<.6){v=false;break}}
+    sp.visible=v;
+  }
+  standBtn.hidden=!seated;
+}
+const standBtn=document.getElementById('standBtn');
+document.getElementById('bLight').onclick=e=>{LVT=LVT>.5?.15:1;e.target.textContent=LVT>.5?'💡 照明':'🎬 上映モード'};
+// ---- screen ----
+const demo=document.createElement('canvas');demo.width=1280;demo.height=720;
+const dc=demo.getContext('2d');
+const demoTex=new THREE.CanvasTexture(demo);
+const screenMat=new THREE.MeshBasicMaterial({map:demoTex,toneMapped:false});
+const screen=new THREE.Mesh(new THREE.PlaneGeometry(SWD,SHT),screenMat);
+screen.position.set(0,SY,SZ);TG.add(screen);
+// ---- シアター2: シアター1をそっくり複製(スクリーンの映像・照明は共通) ----
+const TG2=TG.clone(true);TG2.position.x=OX2;scene.add(TG2);
+TG2.traverse(o=>{if(o.isLight)LIGHTS.push(o)});
+{const n=OBS.length;for(let i=0;i<n;i++){const[a,b,c,d]=OBS[i];OBS.push([a+OX2,b+OX2,c,d])}}
+const opMark2=opMark.clone();opMark2.position.x=OPX+OX2;scene.add(opMark2);
+const OPS=[[opMark,OPX],[opMark2,OPX+OX2]];
+// ---- 家具パーツ ----
+const VEL=M(0x7a1a3a,.9),VEL2=M(0x5e1230,.9),WD=M(0x3a2214,.5),GOLD=new THREE.MeshStandardMaterial({color:0xb8902a,metalness:.8,roughness:.3}),
+ GLASS=new THREE.MeshStandardMaterial({color:0x99ccdd,transparent:true,opacity:.35,roughness:.1,metalness:.3});
+const cyl=(r,h,m,x,y,z,rz=0)=>{const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,14),m);o.position.set(x,y,z);o.rotation.z=rz;o.castShadow=true;TG.add(o);return o};
+function mkBench(x,z){ // 木のフレーム・張りクッション・背もたれ・真鍮の脚
+  box(2.2,.08,.64,WD,x,.44,z);box(2.04,.13,.56,VEL,x,.55,z);box(2.04,.5,.1,VEL,x,.92,z+.3).rotation.x=-.1;
+  box(2.2,.06,.12,WD,x,1.2,z+.34);
+  for(const sx of[-1,1])for(const sz of[-1,1])cyl(.03,.42,GOLD,x+sx*1.0,.21,z+sz*.24);
+}
+function mkSofa(cx,cz,len){ // 背が-x側(壁側)、座面は+x向き。脚・フレーム・3分割クッション・丸い肘掛け・クッション
+  const sl=(len-.5)/3;
+  for(const sx of[-1,1])for(const sz of[-1,1])cyl(.035,.16,GOLD,cx+sx*.38,.08,cz+sz*(len/2-.08));
+  box(.9,.14,len,WD,cx,.23,cz);
+  box(.16,.78,len,VEL2,cx-.43,.65,cz);
+  for(let i=0;i<3;i++){const z=cz-len/2+.25+sl*(i+.5);
+    box(.68,.2,sl-.03,VEL,cx+.07,.4,z);box(.64,.05,sl-.08,VEL2,cx+.07,.52,z);
+    box(.22,.56,sl-.03,VEL,cx-.26,.78,z).rotation.z=.1;}
+  for(const sz of[-1,1]){const z=cz+sz*(len/2-.12);box(.88,.4,.24,VEL2,cx,.45,z);cyl(.12,.88,VEL2,cx,.65,z,Math.PI/2)}
+  const p1=box(.12,.34,.34,M(0xe0b040,.9),cx-.1,.7,cz-len/4);p1.rotation.set(.1,.3,.25);
+  const p2=box(.12,.32,.32,M(0x2a8a8a,.9),cx-.1,.69,cz+len/4);p2.rotation.set(-.1,-.35,.2);
+}
+// ---- 廊下(両シアターの後ろの扉から出る) ----
+{const CX0=-50,CX1=16,CZ0=18,CZ1=25,CH=5,cx=(CX0+CX1)/2,w=CX1-CX0,cz=(CZ0+CZ1)/2,wm=M(0x2a2230,1);
+ box(w,.2,CZ1-CZ0,M(0x30262a,1),cx,-.1,cz);box(w,.2,CZ1-CZ0,M(0x1a1620,1),cx,CH,cz);
+ box(61,CH,.2,wm,-19.5,CH/2,CZ1+.1);box(3,CH,.2,wm,14.5,CH/2,CZ1+.1);box(2,CH-2.8,.2,wm,12,2.8+(CH-2.8)/2,CZ1+.1);box(2,.2,.4,M(0x30262a,1),12,-.1,25.1);box(.2,CH,CZ1-CZ0,wm,CX0-.1,CH/2,cz);box(.2,CH,2.5,wm,CX1+.1,CH/2,19.25);box(.2,CH,2.5,wm,CX1+.1,CH/2,23.75);box(.2,CH-2.8,2,wm,CX1+.1,2.8+(CH-2.8)/2,21.5);
+ for(const[a,b]of[[-24,-12],[12,16.2],[-50.2,-48]])box(b-a,CH,.2,wm,(a+b)/2,CH/2,CZ0);
+ box(w-1,.02,2.6,M(0x5a0a14),cx,.01,21.5);
+ const gold=GOLD,woodW=M(0x3a2214,.6);
+ // 天井: 壁際のコーブ照明、金縁の埋込ダウンライト、ガラスのペンダント
+ for(const z of[CZ0+.3,CZ1-.3])dimBox(w-2,.05,.14,0xffd9a0,cx,CH-.05,z);
+ for(let x=-46;x<=14;x+=6)for(const z of[19.6,23.4]){
+  const rg=new THREE.Mesh(new THREE.CylinderGeometry(.26,.26,.05,20),gold);rg.position.set(x,CH-.02,z);TG.add(rg);
+  const m=emis(0xfff0c8),o=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.03,20),m);o.position.set(x,CH-.05,z);TG.add(o);DIM.push([m,new THREE.Color(0xfff0c8)]);halo(x,CH-.6,z,2.4,.22)}
+ for(const bx of[-30,-20,-5,8]){
+  cyl(.012,1.3,gold,bx,CH-.65,23.4);
+  const sh=new THREE.Mesh(new THREE.SphereGeometry(.28,18,10,0,Math.PI*2,0,Math.PI/2),gold);sh.position.set(bx,CH-1.3,23.4);sh.rotation.x=Math.PI;TG.add(sh);
+  const bm=emis(0xffe2a0),bl=new THREE.Mesh(new THREE.SphereGeometry(.13,12,10),bm);bl.position.set(bx,CH-1.38,23.4);TG.add(bl);DIM.push([bm,new THREE.Color(0xffe2a0)]);halo(bx,CH-1.4,23.4,2.6,.4)}
+ // 壁: 腰壁パネル・真鍮のチェアレール・巾木、壁付けブラケットライト
+ const wain=(x0,x1,z,sg)=>{const mx=(x0+x1)/2,l=x1-x0;box(l,1,.06,woodW,mx,.5,z);box(l,.06,.1,gold,mx,1.03,z+sg*.02);box(l,.15,.09,M(0x1a0e08),mx,.075,z+sg*.01)};
+ wain(-50,11,24.87,-1);wain(13,16,24.87,-1);for(const[a,b]of[[-24,-12],[12,16.2]])wain(a,b,18.17,1);
+ for(const x of[-44,-35,-25,-12,0,6]){
+  box(.3,.5,.05,gold,x,2.4,24.92);
+  const sm=emis(0xffd890),sh=new THREE.Mesh(new THREE.CylinderGeometry(.1,.16,.4,12,1,true),sm);sh.position.set(x,2.5,24.78);TG.add(sh);DIM.push([sm,new THREE.Color(0xffd890)]);halo(x,2.5,24.6,3,.45)}
+ for(const z of[19.2,23.8])box(w-1,.02,.08,gold,cx,.02,z);
+ for(const x of[-30,-20,-5,8]){mkBench(x,24.3);OBS.push([x-1.1,x+1.1,23.9,24.7])}
+ const sign=(txt,x,z,ry,wd,bg)=>{const t=txtTex(256,64,c=>{c.fillStyle=bg;c.fillRect(0,0,256,64);c.strokeStyle='#ffd24d';c.lineWidth=4;c.strokeRect(3,3,250,58);c.fillStyle='#fff';c.font='bold 34px sans-serif';c.textAlign='center';c.fillText(txt,128,45)});
+   const m=new THREE.Mesh(new THREE.PlaneGeometry(wd,wd/4),new THREE.MeshBasicMaterial({map:t}));m.position.set(x,3.5,z);m.rotation.y=ry;TG.add(m)};
+ sign('シアター1',0,CZ0+.12,0,2.4,'#1d2b6b');sign('シアター2',OX2,CZ0+.12,0,2.4,'#6b2f9a');
+ sign('シアター2 ▶',-10,CZ1-.02,Math.PI,2.8,'#6b2f9a');sign('シアター2 ▶',-28,CZ1-.02,Math.PI,2.8,'#6b2f9a');
+ sign('◀ 休憩スペース',6,CZ1-.02,Math.PI,2.8,'#333');}
+// ---- 後ろの扉(観客が近づくと両開きで開く) ----
+const DOORS=[];
+{const dm=M(0x5a3a22,.6),hm=M(0xc9a227,.3);
+ for(const ox of[0,OX2]){const ls=[];
+  for(const sd of[-1,1]){const g=new THREE.Group();g.position.set(ox+sd*1.2,0,RD/2+.02);
+   const lf=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.75,.07),dm);lf.position.set(-sd*.6,1.375,0);lf.castShadow=true;g.add(lf);
+   const hd=new THREE.Mesh(new THREE.BoxGeometry(.05,.25,.1),hm);hd.position.set(-sd*1.08,1.1,0);g.add(hd);
+   scene.add(g);ls.push([g,sd])}
+  DOORS.push({x:ox,a:0,ls})}}
+function doorTick(dt){
+  for(const d of DOORS){
+    const dx=Math.abs(cam.position.x-d.x),dz=Math.abs(cam.position.z-RD/2);
+    const t=(dx<3.5&&dz<3.5)?1:0;
+    d.a+=(t-d.a)*Math.min(1,dt*5);
+    for(const[g,sd]of d.ls)g.rotation.y=-sd*1.5*d.a;
+  }
+}
+// ---- カラオケルーム(廊下の奥の右側の入口から入る) ----
+const KX0=2,KX1=22,KZ0=25.2,KZ1=37,KH=4,KCX=12,KCZ=(KZ0+KZ1)/2,KOX=19.5,KOZ=28.5;
+const KSW=9,KSH=5.06,KSY=2.5,KSZ=KZ1-.15;
+const kcorners=[[1,1],[-1,1],[-1,-1],[1,-1]].map(([a,b])=>new THREE.Vector3(KCX+a*KSW/2,KSY+b*KSH/2,KSZ-.02));
+const inKaraoke=()=>cam.position.x>KX0&&cam.position.x<KX1&&cam.position.z>KZ0-.3&&cam.position.z<KZ1;
+let kBall,kLights;
+{const wm=M(0x24132e,1),mz=(KZ0+KZ1)/2,kd=KZ1-KZ0;
+ box(KX1-KX0,.2,kd,M(0x1a1220,.8),KCX,-.1,mz);box(KX1-KX0,.2,kd,M(0x0c0814,1),KCX,KH,mz);
+ box(.2,KH,kd,wm,KX0-.1,KH/2,mz);box(.2,KH,kd,wm,KX1+.1,KH/2,mz);box(KX1-KX0+.4,KH,.2,wm,KCX,KH/2,KZ1+.1);
+ const ks=new THREE.Mesh(new THREE.PlaneGeometry(KSW,KSH),screenMat);ks.position.set(KCX,KSY,KSZ);ks.rotation.y=Math.PI;TG.add(ks);
+ box(KSW+.4,KSH+.4,.1,M(0x050505),KCX,KSY,KSZ+.1);
+ box(10,.06,2.6,M(0x2a1840),KCX,.03,KZ1-1.8);
+ dimBox(10,.04,.08,0xff40a0,KCX,.08,KZ1-3.1);
+ box(.04,1.4,.04,M(0x888888,.3),KCX,.7,KZ1-2.2);
+ {const m=emis(0xffffff),o=new THREE.Mesh(new THREE.SphereGeometry(.07,12,8),m);o.position.set(KCX,1.45,KZ1-2.2);TG.add(o)}
+ // ソファとテーブル
+ mkSofa(3.2,28.5,4.6);mkSofa(3.2,33,4.6);
+ // ガラステーブル(金の脚・下棚)
+ box(1.4,.03,2.4,GLASS,5.4,.46,30.7);box(1.2,.025,2.2,WD,5.4,.18,30.7);
+ for(const sx of[-1,1])for(const sz of[-1,1])cyl(.03,.45,GOLD,5.4+sx*.62,.225,30.7+sz*1.08);
+ cyl(.05,.12,M(0xdddddd,.2),5.2,.53,30.3);cyl(.05,.12,M(0xdddddd,.2),5.6,.53,31.2);
+ box(.1,.1,.1,M(0x222222),5.4,.5,30.7);
+ OBS.push([2.4,3.9,26,31],[2.4,3.9,30.5,35.5],[4.7,6.1,29.5,31.9]);
+ // ミラーボール
+ kBall=new THREE.Mesh(new THREE.SphereGeometry(.4,16,12),new THREE.MeshStandardMaterial({color:0xdddddd,metalness:.9,roughness:.15}));
+ kBall.position.set(KCX,KH-.8,KCZ+1);TG.add(kBall);box(.03,.8,.03,M(0x888888),KCX,KH-.4,KCZ+1);halo(KCX,KH-.8,KCZ+1,3,.5);
+ // 天井ネオンと照明
+ for(const x of[6,12,18])dimBox(.12,.05,10,[0xff40a0,0x40c0ff,0xffd040][[6,12,18].indexOf(x)],x,KH-.03,KCZ);
+ kLights=[0,1].map(i=>{const l=new THREE.PointLight(0xff40a0,1.1,16);l.position.set(KCX+(i?4:-4),KH-.6,KCZ+(i?2:-2));l.userData.b=1.1;TG.add(l);LIGHTS.push(l);return l});
+ // 看板
+ for(const[z,ry,x] of[[24.98,Math.PI,12],[KZ0+.02,0,12]]){const t=txtTex(256,64,c=>{c.fillStyle='#6b1a5a';c.fillRect(0,0,256,64);c.strokeStyle='#ffd24d';c.lineWidth=4;c.strokeRect(3,3,250,58);c.fillStyle='#fff';c.font='bold 34px sans-serif';c.textAlign='center';c.fillText('🎤 カラオケ',128,45)});
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(2.4,.6),new THREE.MeshBasicMaterial({map:t}));m.position.set(x,3.5,z);m.rotation.y=ry;TG.add(m)}
+ // オペレーション機械
+ box(1.1,1.1,2,M(0x2a2e3a,.5),KOX,.55,KOZ);
+ {const t=txtTex(512,200,c=>{c.fillStyle='#0b1220';c.fillRect(0,0,512,200);c.strokeStyle='#ff6ad0';c.lineWidth=6;c.strokeRect(4,4,504,192);c.fillStyle='#ffb0ea';c.font='bold 52px sans-serif';c.textAlign='center';c.fillText('KARAOKE',256,90);c.fillStyle='#fff';c.font='bold 40px sans-serif';c.fillText('曲 / マイク',256,150)});
+  const pn=new THREE.Mesh(new THREE.PlaneGeometry(1.8,.7),new THREE.MeshBasicMaterial({map:t}));pn.rotation.y=-Math.PI/2;pn.position.set(KOX-.56,1.0,KOZ);TG.add(pn);halo(KOX-.6,1.2,KOZ,2.6,.3)}
+ OBS.push([KOX-.7,KOX+.7,KOZ-1.15,KOZ+1.15]);
+ const kMark=opMark.clone();kMark.position.set(KOX,2.1,KOZ);scene.add(kMark);OPS.push([kMark,KOX,KOZ]);
+ ZONES.push([KX0+.5,KX1-.5,KZ0,KZ1-.5],[11.3,12.7,24.4,25.5]);
+}
+// ---- マイク(自分の声をスピーカーへ。エコー付き。部屋の外ではミュート) ----
+const mic={on:false};
+const kSec=document.getElementById('kSec'),bMic=document.getElementById('bMic'),mLv=document.getElementById('mLv'),mVol=document.getElementById('mVol'),mEcho=document.getElementById('mEcho');
+async function micStart(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:false,autoGainControl:false}});
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();await ctx.resume();
+    const src=ctx.createMediaStreamSource(stream),dry=ctx.createGain(),wet=ctx.createGain(),out=ctx.createGain(),dl=ctx.createDelay(1),fb=ctx.createGain(),an=ctx.createAnalyser();
+    dl.delayTime.value=.17;fb.gain.value=.35;an.fftSize=256;out.gain.value=0;
+    src.connect(an);src.connect(dry);dry.connect(out);src.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(wet);wet.connect(out);out.connect(ctx.destination);
+    Object.assign(mic,{on:true,stream,ctx,wet,out,an,buf:new Uint8Array(an.fftSize)});
+    bMic.textContent='🎤 マイク ON';bMic.style.background='#1f6b3a';
+  }catch(e){alert('マイクを使えませんでした(ブラウザのマイク許可を確認してください)')}
+}
+function micStop(){
+  if(mic.stream)mic.stream.getTracks().forEach(t=>t.stop());
+  if(mic.ctx)mic.ctx.close();
+  mic.on=false;mic.ctx=null;bMic.textContent='🎤 マイク OFF';bMic.style.background='';mLv.style.width='0';
+}
+bMic.onclick=()=>mic.on?micStop():micStart();
+function karaokeTick(t){
+  roomTick();
+  const inK=inKaraoke();
+  kSec.style.display=(inK&&!ctl.hidden)?'flex':'none';
+  kBall.rotation.y=t*.8;
+  kLights.forEach((l,i)=>l.color.setHSL((t*.15+i*.5)%1,.9,.55));
+  if(mic.on&&mic.ctx){
+    mic.out.gain.setTargetAtTime(inK?mVol.value/100:0,mic.ctx.currentTime,.05);
+    mic.wet.gain.setTargetAtTime(mEcho.value/100,mic.ctx.currentTime,.05);
+    mic.an.getByteTimeDomainData(mic.buf);let pk=0;for(const v of mic.buf)pk=Math.max(pk,Math.abs(v-128));
+    mLv.style.width=Math.min(100,pk/128*160)+'%';
+  }
+}
+// ---- ホール(廊下の突き当たりの扉の先): 売店 ----
+const HX0=16.2,HX1=38,HZ0=12,HZ1=25.1,HH=5,HCX=(HX0+HX1)/2,HCZ=(HZ0+HZ1)/2,CNX=36.3,CNZ=18.5;
+let HD,clerk;
+const shopMark=new THREE.Sprite(new THREE.SpriteMaterial({map:txtTex(128,128,x=>{x.fillStyle='rgba(220,120,20,.95)';x.beginPath();x.arc(64,64,58,0,7);x.fill();x.lineWidth=6;x.strokeStyle='#fff';x.stroke();x.fillStyle='#fff';x.font='bold 44px sans-serif';x.textAlign='center';x.fillText('買う',64,80)})}));
+shopMark.scale.set(.8,.8,1);shopMark.position.set(35,2.3,CNZ);shopMark.visible=false;shopMark.userData.shop=true;scene.add(shopMark);
+{const wm=M(0x2a2230,1);
+ const ft=txtTex(64,64,c=>{c.fillStyle='#d8d2c4';c.fillRect(0,0,64,64);c.fillStyle='#3a3340';c.fillRect(0,0,32,32);c.fillRect(32,32,32,32)});ft.wrapS=ft.wrapT=THREE.RepeatWrapping;ft.repeat.set(11,6.5);
+ box(HX1-HX0,.2,HZ1-HZ0,new THREE.MeshStandardMaterial({map:ft,roughness:.3,metalness:.1}),HCX,-.1,HCZ);
+ box(HX1-HX0,.2,HZ1-HZ0,M(0x14101a,1),HCX,HH,HCZ);
+ box(.2,HH,HZ1-HZ0,wm,HX1+.1,HH/2,HCZ);box(HX1-HX0+.4,HH,.2,wm,HCX,HH/2,HZ0-.1);
+ box(22.2,HH,.2,wm,27.1,HH/2,25.1);box(.2,HH,6,wm,16.1,HH/2,15);
+ for(const z of[24.95,12.15]){box(HX1-HX0,1,.06,WD,HCX,.5,z);box(HX1-HX0,.06,.1,GOLD,HCX,1.03,z)}
+ // 扉(近づくと両開き)と看板
+ box(.3,2.9,.2,GOLD,16.1,1.45,20.4);box(.3,2.9,.2,GOLD,16.1,1.45,22.6);
+ const dm=M(0x5a3a22,.6);
+ HD={a:0,lv:[[20.5,1],[22.5,-1]].map(([z,sg])=>{const g=new THREE.Group();g.position.set(16.16,0,z);const m=new THREE.Mesh(new THREE.BoxGeometry(.07,2.75,1.0),dm);m.position.set(0,1.375,sg*.5);m.castShadow=true;g.add(m);TG.add(g);return[g,sg]})};
+ const sgn=(txt,x,ry,bg)=>{const t=txtTex(256,64,c=>{c.fillStyle=bg;c.fillRect(0,0,256,64);c.strokeStyle='#ffd24d';c.lineWidth=4;c.strokeRect(3,3,250,58);c.fillStyle='#fff';c.font='bold 28px sans-serif';c.textAlign='center';c.fillText(txt,128,43)});
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(2.8,.7),new THREE.MeshBasicMaterial({map:t}));m.position.set(x,3.5,21.5);m.rotation.y=ry;TG.add(m)};
+ sgn('🍿 ホール・売店 ▶',15.97,-Math.PI/2,'#7a1a3a');sgn('◀ 廊下・カラオケ',16.23,Math.PI/2,'#333');
+ // カウンター・ポップコーン機・ドリンク冷蔵庫・レジ
+ box(1.4,1.1,9,M(0x2a1a10,.5),CNX,.55,CNZ);box(1.6,.08,9.2,M(0xe8e8ee,.2),CNX,1.14,CNZ);dimBox(.04,.06,9,0xffcc66,CNX-.72,.9,CNZ);
+ const popM=z=>{box(.9,.55,.8,M(0xb01020,.5),CNX,1.46,z);box(.82,.85,.72,GLASS,CNX,2.17,z);
+  for(let i=0;i<22;i++){const o=new THREE.Mesh(new THREE.IcosahedronGeometry(.07,0),M(0xfff0c0,.9));o.position.set(CNX+(Math.random()-.5)*.55,1.8+Math.random()*.5,z+(Math.random()-.5)*.5);TG.add(o)}
+  dimBox(.9,.1,.8,0xffcc44,CNX,2.65,z);halo(CNX,2.3,z,2.2,.4)};
+ popM(16.5);popM(21.5);
+ box(.8,2.3,1.8,M(0x1a1a22,.4),37.5,1.15,15.2);
+ const dc=[0x3a1a10,0xff9a1a,0x4adf7a,0xb8601a,0x7a3aa8];
+ for(let r=0;r<3;r++)for(let i=0;i<6;i++)cyl(.07,.3,M(dc[(r+i)%5],.3),36.95,.55+r*.6,14.5+i*.3);
+ dimBox(.04,2.2,1.7,0xbfe6ff,37.08,1.15,15.2);halo(36.7,1.6,15.2,3,.3);
+ for(const z of[17.6,22.6])for(let i=0;i<3;i++)cyl(.05,.2,M(0xffffff,.6),CNX-.4,1.28,z+i*.14);
+ box(.5,.3,.45,M(0x222228,.4),CNX,1.33,19.3);box(.04,.22,.4,emis(0x6fd0ff),CNX-.26,1.4,19.3);
+ // 店員
+ clerk=new THREE.Group();clerk.position.set(37.4,0,19.5);
+ {const part=(w,h,d,c,x,y)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),M(c,.8));m.position.set(x,y,0);clerk.add(m)};
+  part(.4,.55,.25,0x222633,0,.28);part(.5,.6,.3,0xaa1122,0,.85);part(.12,.5,.14,0xaa1122,-.31,.85);part(.12,.5,.14,0xaa1122,.31,.85);
+  const hd=new THREE.Mesh(new THREE.SphereGeometry(.17,14,10),M(0xf0c9a0,.7));hd.position.y=1.33;clerk.add(hd);
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.09,14),M(0xaa1122,.7));cap.position.y=1.47;clerk.add(cap);
+  const br=new THREE.Mesh(new THREE.BoxGeometry(.2,.02,.14),M(0xaa1122,.7));br.position.set(0,1.43,.16);clerk.add(br)}
+ TG.add(clerk);
+ // メニュー看板
+ {const t=txtTex(768,256,c=>{c.fillStyle='#14101a';c.fillRect(0,0,768,256);c.strokeStyle='#ffd24d';c.lineWidth=8;c.strokeRect(6,6,756,244);c.fillStyle='#ffd24d';c.font='bold 60px sans-serif';c.textAlign='center';c.fillText('売店 CONCESSION',384,80);
+   c.fillStyle='#fff';c.font='bold 42px sans-serif';c.fillText('🍿 ポップコーン  ¥400〜',384,150);c.fillText('🥤 ドリンク  ¥250〜',384,215)});
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(7,2.33),new THREE.MeshBasicMaterial({map:t}));m.position.set(37.85,3.7,CNZ);m.rotation.y=-Math.PI/2;TG.add(m);halo(37.4,3.7,CNZ,6,.3)}
+ // ベンチ・観葉植物・ポスター・照明
+ mkBench(24,24.3);mkBench(30,24.3);
+ for(const z of[13,24]){cyl(.22,.4,M(0x6a3a22,.8),17.2,.2,z);const f=new THREE.Mesh(new THREE.SphereGeometry(.5,12,10),M(0x2a7a3a,.9));f.position.set(17.2,.95,z);f.scale.y=1.3;TG.add(f)}
+ PS.slice(0,3).forEach((P,i)=>{const tex=txtTex(256,384,x=>{const g=x.createLinearGradient(0,0,0,384);g.addColorStop(0,P[2]);g.addColorStop(1,P[3]);x.fillStyle=g;x.fillRect(0,0,256,384);x.textAlign='center';x.fillStyle='#fff';x.font='bold 46px sans-serif';x.fillText(P[0],128,190);x.font='24px sans-serif';x.fillText(P[1],128,230);x.strokeStyle='#ffd24d';x.lineWidth=6;x.strokeRect(6,6,244,372)});
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(2.2,3.3),new THREE.MeshBasicMaterial({map:tex}));pl.position.set(22+i*5,2.8,12.12);TG.add(pl);box(2.4,3.5,.05,GOLD,22+i*5,2.8,12.08)});
+ for(const x of[20,25,30,35])for(const z of[15,19,23]){dimBox(1.2,.05,.5,0xffe9c0,x,HH-.03,z);halo(x,HH-.5,z,2.8,.25)}
+ for(const x of[HCX-4,HCX+5]){const l=new THREE.PointLight(0xffd9a0,1.0,18);l.position.set(x,HH-.8,HCZ);l.userData.b=1.0;TG.add(l);LIGHTS.push(l)}
+ ZONES.push([HX0+.4,HX1-.6,HZ0+.6,24.6],[15.4,17.2,20.7,22.3]);
+ OBS.push([CNX-.85,CNX+.85,13.8,23.2],[22.9,25.1,23.9,24.7],[28.9,31.1,23.9,24.7],[16.9,17.5,12.7,13.3],[16.9,17.5,23.7,24.3]);
+}
+// ---- 売店: 買い物・手に持つ・食べる/飲む ----
+const SHOP={size:1,money:3000};
+try{const v=localStorage.getItem('mt3d_money');if(v!==null)SHOP.money=+v||0}catch(e){}
+const POP=[['塩',0xf6e3a8,400],['キャラメル',0xc98a3a,500],['バター醤油',0xe2b86a,500]],DRK=[['コーラ',0x3a1a10,250],['オレンジ',0xff9a1a,250],['メロンソーダ',0x4adf7a,250],['アイスティー',0xb8601a,250],['ぶどう',0x7a3aa8,250]],SHSZ=[['S',.85,0],['M',1,100],['L',1.2,220]];
+const shopEl=document.getElementById('shop'),yen=n=>'¥'+n.toLocaleString();
+const stripeTex=txtTex(64,64,c=>{for(let i=0;i<8;i++){c.fillStyle=i%2?'#ffffff':'#d01828';c.fillRect(i*8,0,8,64)}});
+function mkBucket(col,sc){const g=new THREE.Group();
+ g.add(new THREE.Mesh(new THREE.CylinderGeometry(.095,.065,.17,16,1,true),new THREE.MeshLambertMaterial({map:stripeTex,side:THREE.DoubleSide})));
+ const bt=new THREE.Mesh(new THREE.CircleGeometry(.065,16),new THREE.MeshLambertMaterial({color:0xd01828}));bt.rotation.x=-Math.PI/2;bt.position.y=-.085;g.add(bt);
+ const corn=new THREE.Group();corn.position.y=.07;
+ for(let i=0;i<14;i++){const sp=new THREE.Mesh(new THREE.IcosahedronGeometry(.032,0),new THREE.MeshLambertMaterial({color:col})),a=i*2.4,r=.055*Math.sqrt((i+1)/14);sp.position.set(Math.cos(a)*r,(i%3)*.018,Math.sin(a)*r);corn.add(sp)}
+ g.add(corn);g.userData.corn=corn;g.scale.setScalar(sc);return g}
+function mkCup(col,sc){const g=new THREE.Group();
+ g.add(new THREE.Mesh(new THREE.CylinderGeometry(.048,.034,.15,16,1,true),new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,opacity:.35,side:THREE.DoubleSide})));
+ const lg=new THREE.CylinderGeometry(.044,.033,.13,16);lg.translate(0,.065,0);const liq=new THREE.Mesh(lg,new THREE.MeshLambertMaterial({color:col}));liq.position.y=-.065;g.add(liq);
+ const lid=new THREE.Mesh(new THREE.CylinderGeometry(.052,.05,.015,16),new THREE.MeshLambertMaterial({color:0xf0f0f0}));lid.position.y=.082;g.add(lid);
+ const st=new THREE.Mesh(new THREE.CylinderGeometry(.005,.005,.12,6),new THREE.MeshLambertMaterial({color:0xe03050}));st.position.set(.01,.14,0);st.rotation.z=-.15;g.add(st);
+ g.userData.liq=liq;g.scale.setScalar(sc);return g}
+const slotL=new THREE.Group(),slotR=new THREE.Group();
+[[slotL,-.2,-.27,-.5,.25],[slotR,.2,-.27,-.5,.15]].forEach(([g,x,y,z,rx])=>{g.position.set(x,y,z);g.rotation.x=rx;g.userData={x,y,z,rx};cam.add(g)});
+const HLD={pop:null,drk:null,anim:null};
+function showHold(){
+  document.getElementById('bEat').hidden=!HLD.pop;document.getElementById('bDrink').hidden=!HLD.drk;document.getElementById('bDrop').hidden=!(HLD.pop||HLD.drk);
+}
+function setHeld(type,idx){
+  const sl=type==='pop'?slotL:slotR;while(sl.children.length)sl.remove(sl.children[0]);
+  const z=SHSZ[SHOP.size],it=(type==='pop'?POP:DRK)[idx];
+  const mdl=type==='pop'?mkBucket(it[1],z[1]):mkCup(it[1],z[1]);sl.add(mdl);HLD[type]={left:1,model:mdl};showHold();
+}
+function renderShop(){
+  document.getElementById('wallet').textContent='所持金 '+yen(SHOP.money);
+  const sr=document.getElementById('szRow');sr.innerHTML='';
+  SHSZ.forEach((z,i)=>{const b=document.createElement('button');b.textContent='サイズ '+z[0];b.style.flex='1';if(i===SHOP.size)b.style.background='#1f6b3a';b.onclick=()=>{SHOP.size=i;renderShop()};sr.appendChild(b)});
+  for(const[id,list,type,em]of[['popList',POP,'pop','🍿'],['drkList',DRK,'drk','🥤']]){
+    const box=document.getElementById(id);box.innerHTML='';
+    list.forEach((it,i)=>{const price=it[2]+SHSZ[SHOP.size][2],b=document.createElement('button');b.textContent=em+' '+it[0]+'  '+yen(price);b.disabled=SHOP.money<price;
+      b.onclick=()=>{if(SHOP.money<price)return;SHOP.money-=price;try{localStorage.setItem('mt3d_money',SHOP.money)}catch(e){}setHeld(type,i);renderShop()};box.appendChild(b)});
+  }
+}
+function openShop(){shopEl.hidden=false;renderShop()}
+document.getElementById('shopX').onclick=()=>shopEl.hidden=true;
+document.getElementById('bAllow').onclick=()=>{SHOP.money+=1000;try{localStorage.setItem('mt3d_money',SHOP.money)}catch(e){}renderShop()};
+document.getElementById('bEat').onclick=()=>{const h=HLD.pop;if(!h||HLD.anim)return;h.left=Math.max(0,h.left-.2);const n=Math.ceil(h.left*14);h.model.userData.corn.children.forEach((c,i)=>c.visible=i<n);HLD.anim={t:0,sl:slotL}};
+document.getElementById('bDrink').onclick=()=>{const h=HLD.drk;if(!h||HLD.anim)return;h.left=Math.max(0,h.left-.15);h.model.userData.liq.scale.y=Math.max(.001,h.left);HLD.anim={t:0,sl:slotR}};
+document.getElementById('bDrop').onclick=()=>{for(const sl of[slotL,slotR])while(sl.children.length)sl.remove(sl.children[0]);HLD.pop=HLD.drk=null;HLD.anim=null;showHold()};
+function hallTick(t,dt){
+  const px=cam.position.x,pz=cam.position.z;
+  HD.a+=((Math.abs(px-16.1)<3.5&&Math.abs(pz-21.5)<3.5?1:0)-HD.a)*Math.min(1,dt*5);
+  for(const[g,sg]of HD.lv)g.rotation.y=sg*1.5*HD.a;
+  clerk.rotation.y=Math.hypot(px-CNX,pz-CNZ)<12?Math.atan2(px-clerk.position.x,pz-clerk.position.z):-Math.PI/2;
+  clerk.position.y=Math.sin(t*2)*.01;
+  const d=Math.hypot(px-35,pz-CNZ);
+  shopMark.visible=d<5&&shopEl.hidden&&px>HX0;
+  if(!shopEl.hidden&&d>7)shopEl.hidden=true;
+  const a=HLD.anim;
+  if(a){a.t+=dt;const k=Math.sin(Math.min(1,a.t/.8)*Math.PI),u=a.sl.userData;
+    a.sl.position.set(u.x,u.y+.09*k,u.z+.12*k);a.sl.rotation.x=u.rx-.5*k;
+    if(a.t>=.8){a.sl.position.set(u.x,u.y,u.z);a.sl.rotation.x=u.rx;HLD.anim=null}}
+}
+let mode='demo',video=null,videoTex=null;
+// 写真・動画は2Dキャンバスに黒帯付き(アスペクト比維持)で描いてから3Dスクリーンに貼る(スマホでも確実に映る)
+const mc=document.createElement('canvas');mc.width=1920;mc.height=1080;
+const mx=mc.getContext('2d'),mediaTex=new THREE.CanvasTexture(mc);
+function drawMedia(src,w,h){
+  mx.fillStyle='#000';mx.fillRect(0,0,1920,1080);
+  const k=Math.min(1920/w,1080/h);mx.drawImage(src,(1920-w*k)/2,(1080-h*k)/2,w*k,h*k);
+  mediaTex.needsUpdate=true;
+}
+function drawDemo(t){
+  const g=dc.createLinearGradient(0,0,1280,720);
+  g.addColorStop(0,`hsl(${(t*20)%360},70%,25%)`);g.addColorStop(1,`hsl(${(t*20+120)%360},70%,15%)`);
+  dc.fillStyle=g;dc.fillRect(0,0,1280,720);
+  for(let i=0;i<40;i++){dc.fillStyle=`hsla(${i*9+t*30},90%,60%,.25)`;
+    dc.beginPath();dc.arc(640+Math.cos(t+i)*(200+i*8),360+Math.sin(t*1.3+i)*(100+i*5),30+i%5*8,0,7);dc.fill();}
+  dc.fillStyle='#fff';dc.font='bold 110px sans-serif';dc.textAlign='center';
+  dc.fillText('🎬 映画館3D',640,330);
+  dc.font='40px sans-serif';dc.fillText('写真・動画・YouTubeを選んでください',640,420);
+  demoTex.needsUpdate=true;
+}
+function clearMedia(){
+  const yt=ytEl;yt.style.display='none';yt.src='';CR.img=null;
+  stopBroadcast();dropIn();
+  if(video){video.pause();video.srcObject=null;video.removeAttribute('src');video.load();video.remove();video=null}
+  if(videoTex){videoTex.dispose();videoTex=null}
+  screenMat.color.set(0xffffff);
+}
+function setTex(t){screenMat.map=t;screenMat.needsUpdate=true}
+document.getElementById('bDemo').onclick=()=>{showDemo();netMedia({k:'demo'})};
+document.getElementById('bFile').onclick=()=>document.getElementById('file').click();
+document.getElementById('file').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  clearMedia();const u=URL.createObjectURL(f);
+  if(f.type.startsWith('video')||/\.(mp4|mov|webm|m4v)$/i.test(f.name)){
+    video=document.createElement('video');
+    video.muted=true;video.loop=true;video.playsInline=true;video.setAttribute('playsinline','');video.setAttribute('webkit-playsinline','');
+    video.style.cssText='position:fixed;width:1px;height:1px;opacity:0;pointer-events:none';
+    document.body.appendChild(video);
+    video.onerror=()=>alert('この動画は再生できませんでした(形式を確認してください)');
+    video.src=u;video.load();
+    video.play().catch(()=>{});
+    setTex(mediaTex);mode='video';
+    netMedia({k:'vid'});{const v=video;v.addEventListener('loadeddata',()=>{if(video===v)startBroadcast()},{once:true})}
+  }else{
+    const im=new Image();
+    im.onload=()=>{CR.img=im;drawMedia(im,im.naturalWidth,im.naturalHeight);setTex(mediaTex);mode='image';shareImg(im)};
+    im.onerror=()=>alert('この画像は表示できませんでした(JPEG/PNG推奨)');
+    im.src=u;
+  }
+  e.target.value='';
+};
+document.getElementById('bSnd').onclick=()=>{if(video){video.muted=!video.muted;video.play().catch(()=>{})}};
+document.getElementById('bPlay').onclick=()=>{if(video)video.paused?video.play():video.pause()};
+function ytId(s){const m=s.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([\w-]{11})/);return m?m[1]:(/^[\w-]{11}$/.test(s)?s:null)}
+function showYt(id){
+  clearMedia();mode='yt';setTex(null);screenMat.color.set(0x000000);screenMat.needsUpdate=true;
+  const yt=ytEl;
+  yt.src='https://www.youtube.com/embed/'+id+'?autoplay=1&playsinline=1&rel=0&enablejsapi=1&disablekb=1';yt.style.display='block';
+}
+function showDemo(){clearMedia();mode='demo';setTex(demoTex)}
+document.getElementById('bPaste').onclick=async()=>{try{const u=document.getElementById('url');u.value=(await navigator.clipboard.readText()).trim();u.blur();if(ytId(u.value))document.getElementById('bYt').click()}catch(e){alert('貼り付けできませんでした。入力欄を長押しして「ペースト」してください')}};
+document.getElementById('bYt').onclick=()=>{
+  const id=ytId(document.getElementById('url').value.trim());
+  if(!id){alert('YouTubeのURLを確認してください');return}
+  showYt(id);netMedia({k:'yt',id});
+};
+
+// ---- YouTube操作(iframeのpostMessage API) ----
+const ytBase=document.getElementById('yt');
+const ROOMS=[0,1,2].map(i=>{let e=ytBase;if(i){e=ytBase.cloneNode(false);e.id='yt'+i;e.className='ytf';document.body.appendChild(e)}else e.className='ytf';return{id:i,mode:'demo',video:null,videoTex:null,yt:e,img:null,pending:null,vol:100}});
+let CR=ROOMS[0],ytEl=CR.yt;
+const yp={t:0,d:0,v:100,m:false,s:-1};let ySeekAt=0;
+const ySlot=document.getElementById('ytSlot'),yCtl=document.getElementById('ytCtl'),ySeek=document.getElementById('ySeek'),yTime=document.getElementById('yTime');
+function ytCmd(f,a=[]){try{ytEl.contentWindow.postMessage(JSON.stringify({event:'command',func:f,args:a}),'*')}catch(e){}}
+function ytListen(){try{ytEl.contentWindow.postMessage(JSON.stringify({event:'listening',id:1,channel:'widget'}),'*')}catch(e){}}
+ROOMS.forEach(R=>R.yt.addEventListener('load',()=>{if(R.yt!==ytEl)return;yp.t=0;yp.d=0;yp.s=-1;ytListen();[300,1200,3000].forEach(ms=>setTimeout(ytListen,ms))}));
+setInterval(()=>{if(mode==='yt')ytListen()},2000);
+addEventListener('message',e=>{
+  if(typeof e.data!=='string'||!/youtube/.test(e.origin)||e.source!==ytEl.contentWindow)return;
+  let d;try{d=JSON.parse(e.data)}catch(_){return}
+  const i=d&&d.info;if(!i||d.event!=='infoDelivery'&&d.event!=='initialDelivery')return;
+  if(i.currentTime!==undefined)yp.t=i.currentTime;if(i.duration)yp.d=i.duration;
+  if(i.volume!==undefined)yp.v=i.volume;if(i.muted!==undefined)yp.m=i.muted;if(i.playerState!==undefined)yp.s=i.playerState;
+});
+const fmt=t=>{t=Math.max(0,Math.floor(t||0));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')};
+document.getElementById('yBack').onclick=()=>ytCmd('seekTo',[Math.max(0,yp.t-10),true]);
+document.getElementById('yFwd').onclick=()=>ytCmd('seekTo',[yp.t+10,true]);
+document.getElementById('yPlay').onclick=()=>ytCmd(yp.s===1?'pauseVideo':'playVideo');
+document.getElementById('yMute').onclick=()=>ytCmd(yp.m?'unMute':'mute');
+document.getElementById('yVol').oninput=e=>{CR.vol=+e.target.value;ytCmd('unMute');ytCmd('setVolume',[+e.target.value])};
+ySeek.oninput=()=>{ySeekAt=Date.now();if(yp.d)ytCmd('seekTo',[ySeek.value/1000*yp.d,true])};
+function ytCmdOn(el,f,a=[]){try{el.contentWindow.postMessage(JSON.stringify({event:'command',func:f,args:a}),'*')}catch(e){}}
+// ---- 部屋ごとに別々の映像(映画館1・映画館2・カラオケ) ----
+function roomView(){
+  screenMat.color.set(mode==='yt'?0x000000:0xffffff);
+  if(mode==='demo')setTex(demoTex);
+  else if(mode==='video')setTex(mediaTex);
+  else if(mode==='image'){if(CR.img)drawMedia(CR.img,CR.img.naturalWidth,CR.img.naturalHeight);setTex(mediaTex)}
+  else if(mode==='yt')setTex(null);
+}
+function enterRoom(i){
+  if(i===CR.id)return;
+  const o=CR;o.mode=mode;o.video=video;o.videoTex=videoTex;
+  if(o.video)o.video.muted=true;
+  o.yt.style.visibility='hidden';o.yt.style.pointerEvents='none';o.yt.style.zIndex='';ytCmdOn(o.yt,'mute');
+  CR=ROOMS[i];mode=CR.mode;video=CR.video;videoTex=CR.videoTex;ytEl=CR.yt;
+  yp.t=0;yp.d=0;yp.s=-1;ytListen();ytCmdOn(ytEl,'unMute');ytCmdOn(ytEl,'setVolume',[CR.vol]);
+  document.getElementById('yVol').value=CR.vol;
+  roomView();
+  if(CR.pending){const m=CR.pending;CR.pending=null;applyMedia(m)}
+}
+function roomTick(){
+  const x=cam.position.x,z=cam.position.z;let r=-1;
+  if(Math.abs(z)<RD/2){if(Math.abs(x)<RW/2)r=0;else if(Math.abs(x-OX2)<RW/2)r=1}else if(inKaraoke())r=2;
+  if(r>=0)enterRoom(r);
+}
+function ytPanelTick(){
+  const on=mode==='yt';
+  ySlot.style.display=on?'block':'none';yCtl.style.display=on?'flex':'none';
+  if(!on)return;
+  yTime.textContent=fmt(yp.t)+' / '+fmt(yp.d);
+  if(Date.now()-ySeekAt>900&&yp.d)ySeek.value=Math.min(1000,yp.t/yp.d*1000);
+}
+// ---- homography to fit iframe on the 3D screen ----
+function solve(A,b){const n=8;for(let i=0;i<n;i++){let p=i;for(let r=i+1;r<n;r++)if(Math.abs(A[r][i])>Math.abs(A[p][i]))p=r;
+  [A[i],A[p]]=[A[p],A[i]];[b[i],b[p]]=[b[p],b[i]];
+  for(let r=i+1;r<n;r++){const f=A[r][i]/A[i][i];for(let c=i;c<n;c++)A[r][c]-=f*A[i][c];b[r]-=f*b[i];}}
+  const x=Array(n);for(let i=n-1;i>=0;i--){let s=b[i];for(let c=i+1;c<n;c++)s-=A[i][c]*x[c];x[i]=s/A[i][i];}return x}
+const corners=[[-1,1],[1,1],[1,-1],[-1,-1]].map(([a,b])=>new THREE.Vector3(a*SWD/2,SY+b*SHT/2,SZ+.02));
+const src=[[0,0],[1280,0],[1280,720],[0,720]];
+function fitIframe(){
+  const yt=ytEl;ytPanelTick();if(mode!=='yt')return;
+  if(!ctl.hidden){
+    const r=ySlot.getBoundingClientRect(),cr=ctl.getBoundingClientRect();
+    if(r.width<10||r.top<cr.top||r.bottom>cr.bottom){yt.style.visibility='hidden';return}
+    yt.style.visibility='visible';yt.style.zIndex=7;yt.style.pointerEvents='auto';
+    yt.style.transform=`translate(${r.left}px,${r.top}px) scale(${r.width/1280},${r.height/720})`;return}
+  if(yt.style.pointerEvents==='auto')yt.blur();
+  yt.style.zIndex='';yt.style.pointerEvents='none';
+  let ox=null;{const px=cam.position.x,pz=cam.position.z;if(Math.abs(pz)<RD/2){if(Math.abs(px)<RW/2)ox=0;else if(Math.abs(px-OX2)<RW/2)ox=OX2}}
+  const K=inKaraoke();if(ox===null&&!K){yt.style.visibility='hidden';return}
+  const pts=[];let behind=false;
+  const CS=K?kcorners:corners,cn=new THREE.Vector3();CS.forEach(c=>cn.add(c));cn.multiplyScalar(.25);
+  for(const c of CS){const v=cn.clone().lerp(c,.975);if(!K)v.x+=ox;
+    const vc=v.clone().applyMatrix4(cam.matrixWorldInverse);if(vc.z>-.6)behind=true;
+    v.project(cam);pts.push([(v.x+1)/2*W(),(1-v.y)/2*H()]);}
+  // 画面が大きくゆがむ・裏返る場合は表示しない(スクリーンからはみ出し防止)
+  {let ar=0;for(let i=0;i<4;i++){const a=pts[i],b=pts[(i+1)%4];ar+=a[0]*b[1]-b[0]*a[1]}
+   let cv=true;for(let i=0;i<4;i++){const a=pts[i],b=pts[(i+1)%4],c=pts[(i+2)%4];if((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0])<0)cv=false}
+   if(ar<0||!cv||Math.abs(ar)<400)behind=true}
+  if(behind){yt.style.visibility='hidden';return}
+  yt.style.visibility='visible';
+  const A=[],b=[];
+  for(let i=0;i<4;i++){const[x,y]=src[i],[u,v]=pts[i];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]);b.push(u);
+    A.push([0,0,0,x,y,1,-v*x,-v*y]);b.push(v);}
+  const h=solve(A,b);
+  yt.style.transform=`matrix3d(${h[0]},${h[3]},0,${h[6]},${h[1]},${h[4]},0,${h[7]},0,0,1,0,${h[2]},${h[5]},0,1)`;
+}
+
+// ---- controls ----
+const keys={};let yaw=0,pitch=0,seated=false,seatIdx=-1;
+addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+// 左スティック(移動)
+const stk=document.getElementById('stick'),knob=document.getElementById('knob'),st={x:0,y:0,id:null};
+function stickMove(e){
+  const r=stk.getBoundingClientRect(),R=r.width/2-10;
+  let dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);const d=Math.hypot(dx,dy);
+  if(d>R){dx*=R/d;dy*=R/d}
+  knob.style.transform=`translate(${dx}px,${dy}px)`;
+  st.x=dx/R;st.y=dy/R;if(Math.hypot(st.x,st.y)<.12)st.x=st.y=0;
+}
+function stickEnd(e){if(e.pointerId!==st.id)return;st.id=null;st.x=st.y=0;knob.style.transform=''}
+stk.addEventListener('pointerdown',e=>{st.id=e.pointerId;stk.setPointerCapture(e.pointerId);stickMove(e);e.preventDefault()});
+stk.addEventListener('pointermove',e=>{if(e.pointerId===st.id)stickMove(e)});
+stk.addEventListener('pointerup',stickEnd);stk.addEventListener('pointercancel',stickEnd);
+// 視点: スティックとは別の指(またはマウス)のドラッグ
+let look=null;
+renderer.domElement.addEventListener('pointerdown',e=>{if(look)return;look={id:e.pointerId,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,st:performance.now()};renderer.domElement.setPointerCapture(e.pointerId)});
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(!look||e.pointerId!==look.id)return;
+  yaw-=(e.clientX-look.x)*.0045;
+  pitch=Math.max(-1.2,Math.min(1.2,pitch-(e.clientY-look.y)*.0045));
+  look.x=e.clientX;look.y=e.clientY;
+});
+const ray=new THREE.Raycaster();
+function tapAt(cx,cy){
+  ray.setFromCamera(new THREE.Vector2(cx/W()*2-1,-(cy/H())*2+1),cam);
+  const h=ray.intersectObjects(MARK.filter(m=>m.visible).concat(OPS.map(o=>o[0]).filter(o=>o.visible),shopMark.visible?[shopMark]:[]))[0];
+  if(h){if(h.object.userData.shop)openShop();else if(h.object.userData.i===undefined)ctl.hidden=false;else sitAt(h.object.userData.i)}
+}
+const lookEnd=e=>{
+  if(look&&e.pointerId===look.id){
+    if(Math.hypot(e.clientX-look.sx,e.clientY-look.sy)<10&&performance.now()-look.st<500)tapAt(e.clientX,e.clientY);
+    look=null;
+  }
+};
+renderer.domElement.addEventListener('pointerup',lookEnd);renderer.domElement.addEventListener('pointercancel',lookEnd);
+function sitAt(i){const[x,z,r]=SEATS[i];seated=true;seatIdx=i;cam.position.set(x,rowY(r)+.05+1.4,z-.05);yaw=0;pitch=.05}
+function standUp(){if(!seated)return;const[x,z]=SEATS[seatIdx];seated=false;seatIdx=-1;cam.position.set(x,floorAt(x,z-1.15)+EYE,z-1.15)}
+standBtn.onclick=standUp;
+document.getElementById('bSeat').onclick=()=>{
+  if(seated){standUp();return}
+  let bi=-1,bd=8;SEATS.forEach(([x,z],i)=>{const d=Math.hypot(cam.position.x-x,cam.position.z-z);
+    if(d<bd&&!Object.values(AV).some(a=>a.s&&Math.hypot(a.tx-x,a.tz-z)<.6)){bd=d;bi=i}});
+  if(bi>=0)sitAt(bi);
+};
+addEventListener('resize',()=>{renderer.setSize(W(),H());cam.aspect=W()/H();cam.updateProjectionMatrix()});
+
+// ---- スマホ: 文字選択・ダブルタップ/ピンチのズームを無効化 ----
+const inInput=e=>e.target&&e.target.tagName==='INPUT';
+['gesturestart','gesturechange','gestureend'].forEach(n=>document.addEventListener(n,e=>e.preventDefault()));
+document.addEventListener('selectstart',e=>{if(!inInput(e))e.preventDefault()});
+document.addEventListener('contextmenu',e=>{if(!inInput(e))e.preventDefault()});
+document.addEventListener('dblclick',e=>{if(!inInput(e))e.preventDefault()});
+let lastT=0;document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastT<350&&!inInput(e)&&!(e.target.closest&&e.target.closest('#ui,#room,#ctl,#standBtn')))e.preventDefault();lastT=n},{passive:false});
+document.addEventListener('touchmove',e=>{if(e.touches.length>1)e.preventDefault()},{passive:false});
+
+// ---- 通信(PeerJS・部屋コード方式: 部屋を作った人が中継) ----
+// ===== TURNサーバー設定(indexA16_1.htmlと同じ構成) =====
+// 自前のTURNサーバーがあれば MY_TURN に追加すると接続しやすくなります
+// 例: {urls:['turn:xxxx:443?transport=tcp'],username:'..',credential:'..'}
+const MY_TURN=[];
+const ICE=[...MY_TURN,
+  {urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'},
+  {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}];
+const PCFG={debug:0,config:{iceServers:ICE,iceCandidatePoolSize:2}};
+const $=id=>document.getElementById(id);
+const net={peer:null,host:false,conn:null,conns:{},me:0,code:'',media:null,next:1,t:0,name:''};
+const AV={};
+$('rname').value='ゲスト'+Math.floor(Math.random()*90+10);
+$('bRoom').onclick=()=>{$('room').hidden=!$('room').hidden;lbTick()};
+function setStat(t){$('rst').textContent=t}
+function netUI(on){$('rmk').hidden=on;$('rjoin').hidden=on;$('rLeave').hidden=!on}
+function mkAvatar(id,name){
+  const g=new THREE.Group(),col=new THREE.Color().setHSL((id*.137)%1,.55,.42);
+  const bm=new THREE.MeshLambertMaterial({color:col}),sk=new THREE.MeshLambertMaterial({color:0xf0c9a0}),lg=new THREE.MeshLambertMaterial({color:0x222233});
+  const add=(geo,m,x,y,z)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);g.add(o);return o};
+  add(new THREE.BoxGeometry(.5,.7,.3),bm,0,1.05,0);
+  add(new THREE.BoxGeometry(.4,.7,.25),lg,0,.35,0);
+  add(new THREE.SphereGeometry(.17,12,10),sk,0,1.55,0);
+  add(new THREE.BoxGeometry(.06,.06,.1),sk,0,1.55,-.18);
+  for(const sx of[-1,1])add(new THREE.BoxGeometry(.11,.11,.4),bm,sx*.33,1.15,-.12);
+  const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');
+  x.fillStyle='rgba(0,0,0,.55)';x.fillRect(0,8,256,48);x.fillStyle='#fff';x.font='bold 30px sans-serif';x.textAlign='center';x.fillText(name,128,42);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true}));
+  sp.scale.set(1.6,.4,1);sp.position.y=2.05;g.add(sp);
+  scene.add(g);return AV[id]={g,tx:0,ty:0,tz:0,yaw:0,fresh:true};
+}
+function rmAvatar(id){const a=AV[id];if(a){scene.remove(a.g);delete AV[id]}}
+function bc(m,except){for(const pid in net.conns)if(+pid!==except&&net.conns[pid].open)net.conns[pid].send(m)}
+function sendMsg(m){if(net.host){m.id=0;bc(m)}else if(net.conn&&net.conn.open)net.conn.send(m)}
+function hostStat(){setStat('部屋コード: '+net.code+'(参加 '+(Object.keys(net.conns).length+1)+'人)')}
+function showImgData(d){const im=new Image();im.onload=()=>{clearMedia();CR.img=im;drawMedia(im,im.naturalWidth,im.naturalHeight);setTex(mediaTex);mode='image'};im.src=d}
+// ---- 動画ファイルの共有: 選んだ人の映像を、部屋の全員へ直接ライブ配信(WebRTC) ----
+let bcast=null,inCall=null;
+function startBroadcast(){
+  stopBroadcast();if(!net.peer||!video)return;
+  const st=mc.captureStream(30);
+  try{const vs=video.captureStream?video.captureStream():(video.mozCaptureStream?video.mozCaptureStream():null);
+    if(vs)vs.getAudioTracks().forEach(t=>st.addTrack(t))}catch(e){}
+  bcast={stream:st,calls:{}};callNew();
+}
+function callNew(){
+  if(!bcast||!net.peer||!net.list)return;
+  for(const id of net.list){
+    if(id===net.peer.id||bcast.calls[id])continue;
+    const c=net.peer.call(id,bcast.stream);if(!c)continue;
+    bcast.calls[id]=c;const b=bcast;c.on('close',()=>{if(b.calls[id]===c)delete b.calls[id]});
+  }
+}
+function stopBroadcast(){if(bcast){for(const id in bcast.calls)try{bcast.calls[id].close()}catch(e){}bcast.stream.getTracks().forEach(t=>t.stop());bcast=null}}
+function dropIn(){if(inCall){try{inCall.close()}catch(e){}inCall=null}}
+function onCall(call){
+  dropIn();inCall=call;call.answer();
+  call.on('stream',st=>{
+    if(video){video.pause();video.remove()}
+    const rv=document.createElement('video');rv.muted=true;rv.playsInline=true;rv.setAttribute('playsinline','');
+    rv.style.cssText='position:fixed;width:1px;height:1px;opacity:0;pointer-events:none';
+    document.body.appendChild(rv);rv.srcObject=st;rv.play().catch(()=>{});
+    video=rv;setTex(mediaTex);mode='video';
+  });
+}
+function showWaitVid(){clearMedia();mode='video';video=null;mx.fillStyle='#000';mx.fillRect(0,0,1920,1080);mx.fillStyle='#fff';mx.font='bold 70px sans-serif';mx.textAlign='center';mx.fillText('動画を受信中…',960,560);mediaTex.needsUpdate=true;setTex(mediaTex)}
+function pushPeers(){const list=[net.peer.id,...Object.values(net.conns).map(c=>c.peer)];net.list=list;bc({t:'peers',list});if(bcast)callNew()}
+function applyMedia(m){const r=m.r||0;if(!ROOMS[r])return;if(r!==CR.id){if(m.k!=='vid')ROOMS[r].pending=m;return}
+ if(m.k==='vid'){showWaitVid();return}
+ if(m.k==='yt')showYt(m.id);else if(m.k==='demo')showDemo();else if(m.k==='img')showImgData(m.d)}
+function netMedia(m){if(!net.peer)return;m.t='m';m.r=CR.id;if(net.host){(net.mediaR=net.mediaR||{})[m.r]=m;bc(m)}else if(net.conn&&net.conn.open)net.conn.send(m)}
+function shareImg(im){
+  if(!net.peer)return;
+  const k=Math.min(1,1280/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement('canvas');
+  c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);
+  c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+  netMedia({k:'img',d:c.toDataURL('image/jpeg',.7)});
+}
+function onMsg(m,from){
+  if(!m||!m.t)return;
+  if(m.t==='p'){
+    const id=net.host?from:m.id;if(id===net.me)return;
+    const a=AV[id]||mkAvatar(id,m.n||('ゲスト'+id));
+    a.s=m.s;a.tx=m.x;a.ty=m.y-(m.s?1.4:1.7);a.tz=m.z;a.yaw=m.yaw;
+    if(a.fresh){a.fresh=false;a.g.position.set(a.tx,a.ty,a.tz);a.g.rotation.y=a.yaw}
+    if(net.host){m.id=from;bc(m,from)}
+  }else if(m.t==='m'){applyMedia(m);if(net.host){(net.mediaR=net.mediaR||{})[m.r||0]=m;bc(m,from)}}
+  else if(m.t==='leave')rmAvatar(m.id);
+  else if(m.t==='peers'){net.list=m.list;if(bcast)callNew()}
+  else if(m.t==='welcome'){net.me=m.id;(m.medias||[]).forEach(applyMedia)}
+  else if(m.t==='full'){setStat('この部屋は満員です(最大8人)');leaveRoom(true)}
+}
+function leaveRoom(keep){
+  if(net.host&&net.code)lbSend({t:'unreg',code:net.code});
+  stopBroadcast();dropIn();net.list=null;
+  {const p0=net.peer;net.peer=null;if(p0){try{p0.destroy()}catch(e){}}}
+  net.host=false;net.conn=null;net.conns={};net.mediaR={};net.me=0;
+  for(const id in AV)rmAvatar(id);
+  netUI(false);if(!keep)setStat('未接続(一人でも遊べます)');
+}
+function needPeer(){if(typeof Peer==='undefined'){setStat('通信ライブラリを読み込めませんでした(ネット接続を確認)');return false}net.name=($('rname').value.trim()||'ゲスト').slice(0,8);return true}
+function createRoom(tries,fixed){
+  leaveRoom(true);if(!needPeer())return;
+  net.roomName=($('rroom').value.trim()||net.name+'の部屋').slice(0,12);
+  const code=fixed||String(Math.floor(1000+Math.random()*9000));
+  const pr=new Peer('mt3d-'+code,PCFG);net.peer=pr;net.host=true;net.me=0;net.code=code;net.next=1;
+  setStat('部屋を作成中…');
+  pr.on('open',()=>{netUI(true);hostStat();net.list=[pr.id];lbHeartbeat()});
+  pr.on('call',onCall);
+  pr.on('disconnected',()=>{if(net.peer===pr&&!pr.destroyed)try{pr.reconnect()}catch(e){}});
+  pr.on('error',e=>{
+    if(e.type==='unavailable-id'&&(tries||0)<(fixed?8:5)){if(fixed){leaveRoom(true);setStat('部屋に復帰中…');setTimeout(()=>{if(!net.peer)createRoom((tries||0)+1,fixed)},2500)}else createRoom((tries||0)+1)}
+    else{setStat('部屋を作れませんでした: '+e.type);leaveRoom(true)}
+  });
+  pr.on('connection',c=>{
+    if(Object.keys(net.conns).length>=7){c.on('open',()=>{c.send({t:'full'});setTimeout(()=>c.close(),400)});return}
+    const pid=net.next++;
+    c.on('open',()=>{net.conns[pid]=c;c.send({t:'welcome',id:pid,medias:Object.values(net.mediaR||{})});hostStat();pushPeers()});
+    c.on('data',m=>onMsg(m,pid));
+    const gone=()=>{if(net.conns[pid]){delete net.conns[pid];rmAvatar(pid);bc({t:'leave',id:pid});hostStat();pushPeers()}};
+    c.on('close',gone);c.on('error',gone);
+  });
+}
+function scheduleRejoin(code){
+  if((net.rj||0)>=6)return false;
+  const rj=net.rj=(net.rj||0)+1;
+  leaveRoom(true);setStat('接続が切れました。再接続中…('+rj+'/6)');
+  setTimeout(()=>{if(net.rj===rj&&!net.peer)joinRoom(code)},2500);return true;
+}
+function joinRoom(code){
+  leaveRoom(true);if(!needPeer())return;
+  if(!/^\d{4}$/.test(code)){setStat('部屋コードは4桁の数字です');return}
+  setStat('接続中…');
+  const pr=new Peer(PCFG);net.peer=pr;
+  const to=setTimeout(()=>{if(net.peer===pr&&!(net.conn&&net.conn.open)){if((net.rj||0)>0&&scheduleRejoin(code))return;setStat('接続できませんでした(時間切れ)');leaveRoom(true)}},12000);
+  pr.on('call',onCall);
+  pr.on('open',()=>{
+    const c=pr.connect('mt3d-'+code,{reliable:true});net.conn=c;
+    c.on('open',()=>{clearTimeout(to);net.rj=0;net.code=code;netUI(true);setStat('部屋 '+code+' に参加中')});
+    c.on('data',m=>onMsg(m,0));
+    c.on('close',()=>{if(net.peer===pr){if(scheduleRejoin(code))return;setStat('部屋が閉じられました');leaveRoom(true)}});
+  });
+  pr.on('disconnected',()=>{if(net.peer===pr&&!pr.destroyed)try{pr.reconnect()}catch(e){}});
+  pr.on('error',e=>{clearTimeout(to);if(net.peer===pr&&(net.rj||0)>0&&scheduleRejoin(code))return;setStat(e.type==='peer-unavailable'?'その部屋コードは見つかりません':'接続エラー: '+e.type);leaveRoom(true)});
+}
+$('rMake').onclick=()=>{net.rj=0;createRoom(0)};
+$('rGo').onclick=()=>{net.rj=0;joinRoom($('rcode').value.trim())};
+$('rLeave').onclick=()=>{net.rj=99;net.code='';leaveRoom(false)};
+// アプリを切り替えて戻った時(YouTubeのリンクを取りに行った後など)に部屋へ自動復帰する
+function resumeNet(){
+  if(document.hidden)return;const p=net.peer;
+  if(!p){if(net.code&&net.rj>0&&net.rj<6&&!net.host)scheduleRejoin(net.code);return}
+  if(p.destroyed){if(net.host&&net.code)createRoom(0,net.code);else if(net.code){net.rj=0;scheduleRejoin(net.code)}return}
+  if(p.disconnected){try{p.reconnect()}catch(e){}}
+  if(!net.host&&net.conn&&!net.conn.open&&net.code){net.rj=0;scheduleRejoin(net.code)}
+}
+document.addEventListener('visibilitychange',resumeNet);addEventListener('pageshow',resumeNet);addEventListener('online',resumeNet);
+function netTick(dt){
+  if(net.peer){
+    net.t+=dt;
+    if(net.t>.1){net.t=0;sendMsg({t:'p',x:cam.position.x,y:cam.position.y,z:cam.position.z,yaw,s:seated?1:0,n:net.name})}
+  }
+  const k=Math.min(1,dt*10);
+  for(const id in AV){
+    const a=AV[id],g=a.g;
+    g.position.x+=(a.tx-g.position.x)*k;g.position.y+=(a.ty-g.position.y)*k;g.position.z+=(a.tz-g.position.z)*k;
+    let d=a.yaw-g.rotation.y;d=Math.atan2(Math.sin(d),Math.cos(d));g.rotation.y+=d*k;
+  }
+}
+addEventListener('beforeunload',()=>{if(net.peer)try{net.peer.destroy()}catch(e){}});
+
+// ---- 部屋探し(ロビー): 固定IDのピアが「部屋一覧」を預かる。最初に開いた人がロビー役になり、いなくなれば次の人が引き継ぐ ----
+const LOBBY='mt3d-lobby-v1';
+const lb={peer:null,conn:null,isLobby:false,rooms:{},retry:null};
+const lbWanted=()=>!$('room').hidden||net.host;
+function lbValid(){const now=Date.now(),o=[];for(const c in lb.rooms){if(now-lb.rooms[c].t>13000)delete lb.rooms[c];else o.push(lb.rooms[c])}return o}
+function lbHandle(m,c){
+  if(!m)return;
+  if(m.t==='reg')lb.rooms[m.code]={code:m.code,name:m.name,n:m.n,t:Date.now()};
+  else if(m.t==='unreg')delete lb.rooms[m.code];
+  else if(m.t==='list'&&c)c.send({t:'rooms',list:lbValid()});
+}
+function lbSend(m){if(lb.isLobby)lbHandle(m);else if(lb.conn&&lb.conn.open)lb.conn.send(m)}
+function lbReset(retry){
+  const pr=lb.peer;lb.peer=null;lb.conn=null;lb.isLobby=false;
+  if(pr)try{pr.destroy()}catch(e){}
+  if(retry&&!lb.retry)lb.retry=setTimeout(()=>{lb.retry=null;lbTick()},800+Math.random()*1500);
+}
+function lbStart(){
+  if(lb.peer||lb.retry||typeof Peer==='undefined')return;
+  const pr=new Peer(LOBBY,PCFG);lb.peer=pr;
+  pr.on('open',()=>{if(lb.peer!==pr)return;lb.isLobby=true;lb.rooms={};lbHeartbeat();renderRooms(lbValid())});
+  pr.on('connection',c=>c.on('data',m=>lbHandle(m,c)));
+  pr.on('error',e=>{
+    if(lb.peer!==pr)return;
+    if(e.type==='unavailable-id')lbClient();else lbReset(true);
+  });
+}
+function lbClient(){
+  try{lb.peer.destroy()}catch(e){}
+  const pr=new Peer(PCFG);lb.peer=pr;lb.isLobby=false;
+  pr.on('open',()=>{
+    if(lb.peer!==pr)return;
+    const c=pr.connect(LOBBY,{reliable:true});lb.conn=c;
+    c.on('open',()=>{if(lb.peer===pr){lbHeartbeat();c.send({t:'list'})}});
+    c.on('data',m=>{if(lb.peer===pr&&m&&m.t==='rooms')renderRooms(m.list)});
+    c.on('close',()=>{if(lb.peer===pr)lbReset(true)});
+  });
+  pr.on('error',e=>{if(lb.peer===pr)lbReset(true)});
+}
+function lbHeartbeat(){
+  if(net.host&&net.code&&net.peer&&net.peer.open)lbSend({t:'reg',code:net.code,name:net.roomName||'部屋',n:Object.keys(net.conns).length+1});
+}
+function renderRooms(list){
+  const box=$('rlist');box.innerHTML='';
+  if(!list||!list.length){const d=document.createElement('div');d.className='none';d.textContent='いま開いている部屋はありません。「部屋を作る」で作れます。';box.appendChild(d);return}
+  for(const r of list){
+    const b=document.createElement('button'),mine=net.peer&&net.code===r.code;
+    b.textContent=(mine?'✔ ':'🚪 ')+r.name+'  ('+r.n+'/8人)'+(mine?' 入室中':'');
+    b.disabled=mine||r.n>=8;
+    b.onclick=()=>joinRoom(r.code);
+    box.appendChild(b);
+  }
+}
+function lbTick(){
+  if(lbWanted()){
+    lbStart();lbHeartbeat();
+    if(lb.isLobby)renderRooms(lbValid());
+    else if(lb.conn&&lb.conn.open)lb.conn.send({t:'list'});
+  }else if(lb.peer){lbReset(false)}
+}
+setInterval(lbTick,3000);
+
+// ---- loop ----
+const clock=new THREE.Clock();
+function tick(){
+  const dt=clock.getDelta(),t=clock.elapsedTime;
+  const sp=4*dt;
+  let f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0)-st.y;
+  let s=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+st.x;
+  const mg=Math.hypot(f,s);if(mg>1){f/=mg;s/=mg}
+  if(f||s){
+    cam.position.x+=(-Math.sin(yaw)*f+Math.cos(yaw)*s)*sp;
+    cam.position.z+=(-Math.cos(yaw)*f-Math.sin(yaw)*s)*sp;
+    seated=false;
+  }
+  if(!seated)collide(cam.position);
+  lastOK.x=cam.position.x;lastOK.z=cam.position.z;
+  const fl=floorAt(cam.position.x,cam.position.z);
+  const ty=seated?fl+1.4:fl+EYE;   // 目の高さ: 床+1.7m(座席では+1.4m)
+  cam.position.y+=(ty-cam.position.y)*Math.min(1,dt*10);
+  cam.rotation.set(pitch,yaw,0);
+  swing+=(((f||s)?1:0)-swing)*Math.min(1,dt*8);if(f||s)walk+=dt*8;
+  const bob=Math.abs(Math.sin(walk))*.03*swing;
+  arms.forEach((p,i)=>{const sg=i?1:-1;p.rotation.x=Math.sin(walk)*sg*.4*swing;p.position.z=-.45+Math.cos(walk)*sg*.05*swing;p.position.y=-.3-bob*.5});
+  if(mode==='demo')drawDemo(t);
+  else if(mode==='video'&&video&&video.readyState>=2&&video.videoWidth)drawMedia(video,video.videoWidth,video.videoHeight);
+  beam.material.opacity=.03+Math.sin(t*3)*.004;
+  cam.updateMatrixWorld();cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
+  decorTick(t,dt);
+  netTick(dt);
+  renderer.render(scene,cam);
+  fitIframe();
+  requestAnimationFrame(tick);
+}
+tick();
+</script></body></html>
